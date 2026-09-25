@@ -3,18 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Beli VPN Otomatis QRIS</title>
+  <title>Store VPN & Trial 60 Menit - QRIS</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
 
   <div class="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
-    <div class="text-center mb-6">
+    <div class="text-center mb-5">
       <h1 class="text-2xl font-bold text-blue-400">⚡ Auto VPN Store</h1>
-      <p class="text-xs text-slate-400 mt-1">Tarif harian fleksibel (Maks 30 Hari = Rp 9.000)</p>
+      <p class="text-xs text-slate-400 mt-1">Uji coba 60 menit gratis atau langganan harian QRIS</p>
     </div>
 
-    <!-- TAHAP 1: FORM PEMBELIAN -->
+    <!-- TAB PILIHAN: BELI vs TRIAL -->
+    <div class="grid grid-cols-2 gap-2 bg-slate-700/50 p-1 rounded-xl mb-5 border border-slate-600/50">
+      <button id="tabBuy" onclick="switchMode('buy')" class="py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow transition duration-150">
+        💳 Beli Akun (QRIS)
+      </button>
+      <button id="tabTrial" onclick="switchMode('trial')" class="py-2 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition duration-150">
+        🎁 Trial Gratis (60 Menit)
+      </button>
+    </div>
+
+    <!-- FORM INPUT -->
     <div id="stepForm" class="space-y-4">
       <div>
         <label class="block text-xs font-semibold mb-1 text-slate-300">Username Akun</label>
@@ -31,33 +41,44 @@
         </select>
       </div>
 
-      <!-- SLIDER HARIAN -->
-      <div class="bg-slate-750 p-3.5 rounded-lg border border-slate-700 bg-slate-700/30">
-        <div class="flex justify-between items-center mb-2">
+      <!-- KONTEN KHUSUS MODE BELI (SLIDER HARIAN) -->
+      <div id="buySection" class="bg-slate-700/30 p-3.5 rounded-lg border border-slate-700 space-y-3">
+        <div class="flex justify-between items-center">
           <label class="text-xs font-semibold text-slate-300">Durasi Masa Aktif</label>
           <span id="labelDays" class="text-sm font-bold text-blue-400">30 Hari</span>
         </div>
 
-        <input type="range" id="inputDays" min="1" max="30" value="30" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="calculate(this.value)">
+        <input type="range" id="inputDays" min="1" max="30" value="30" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="calculatePrice(this.value)">
 
-        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
-          <span>1 Hari</span>
-          <span>15 Hari</span>
-          <span>30 Hari</span>
+        <div class="flex justify-between text-[10px] text-slate-400">
+          <span>1 Hari (Rp 300)</span>
+          <span>15 Hari (Rp 4.500)</span>
+          <span>30 Hari (Rp 9.000)</span>
         </div>
 
-        <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-700">
+        <div class="flex justify-between items-center pt-2.5 border-t border-slate-700">
           <span class="text-xs text-slate-400">Total Harga:</span>
           <span id="labelPrice" class="text-lg font-bold text-emerald-400">Rp 9.000</span>
         </div>
       </div>
 
-      <button id="btnSubmit" onclick="submitOrder()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition duration-200">
+      <!-- KONTEN KHUSUS MODE TRIAL 60 MENIT -->
+      <div id="trialSection" class="hidden bg-emerald-950/30 p-3.5 rounded-lg border border-emerald-800/60 text-emerald-300 text-xs space-y-1">
+        <div class="font-semibold flex items-center gap-1.5">
+          <span>⏱️</span> Akses Trial 60 Menit
+        </div>
+        <p class="text-slate-300 text-[11px] leading-relaxed">
+          Masa aktif: <b>60 Menit (1 Jam)</b>.<br>
+          Langsung aktif instan untuk cek kecepatan & konektivitas server.
+        </p>
+      </div>
+
+      <button id="btnSubmit" onclick="handleSubmit()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition duration-200">
         Lanjut ke Pembayaran QRIS
       </button>
     </div>
 
-    <!-- TAHAP 2: AREA SCAN QRIS -->
+    <!-- AREA SCAN QRIS -->
     <div id="stepQris" class="hidden text-center space-y-4">
       <div class="bg-white p-3 rounded-xl inline-block shadow-md">
         <img id="qrisImg" src="" alt="Scan QRIS" class="w-56 h-56 mx-auto object-contain">
@@ -68,14 +89,14 @@
       </div>
       <div class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 p-2.5 rounded-lg">
         ⏳ Silakan buka e-wallet / m-banking dan scan QRIS di atas.<br>
-        Halaman akan otomatis memperbarui setelah pembayaran berhasil.
+        Layar akan otomatis menampilkan config setelah pembayaran masuk.
       </div>
     </div>
 
-    <!-- TAHAP 3: AKUN SUDAH JADI -->
+    <!-- HASIL CONFIG / AKUN -->
     <div id="stepResult" class="hidden space-y-4">
-      <div class="p-3 bg-emerald-950 border border-emerald-500 text-emerald-300 rounded-lg text-center text-xs">
-        🎉 Pembayaran Diterima! Akun VPN Anda telah siap digunakan.
+      <div id="resultBanner" class="p-3 bg-emerald-950 border border-emerald-500 text-emerald-300 rounded-lg text-center text-xs">
+        🎉 Akun VPN Berhasil Dibuat!
       </div>
       <div>
         <label class="block text-xs font-semibold mb-1 text-slate-300">Config / Detail Akun:</label>
@@ -85,32 +106,90 @@
         📋 Salin Config ke Clipboard
       </button>
       <button onclick="location.reload()" class="w-full text-xs text-slate-400 hover:text-white underline">
-        Beli Akun Lain
+        Kembali ke Menu Awal
       </button>
     </div>
   </div>
 
   <script>
-    const PRICE_PER_DAY = 300; // Rp 9000 / 30
+    let currentMode = 'buy';
+    const PRICE_PER_DAY = 300;
     let pollInterval = null;
 
-    function calculate(val) {
+    function switchMode(mode) {
+      currentMode = mode;
+      const tabBuy = document.getElementById('tabBuy');
+      const tabTrial = document.getElementById('tabTrial');
+      const buySection = document.getElementById('buySection');
+      const trialSection = document.getElementById('trialSection');
+      const btnSubmit = document.getElementById('btnSubmit');
+
+      if (mode === 'buy') {
+        tabBuy.className = 'py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white shadow';
+        tabTrial.className = 'py-2 text-xs font-semibold rounded-lg text-slate-300 hover:text-white';
+        buySection.classList.remove('hidden');
+        trialSection.classList.add('hidden');
+        btnSubmit.innerText = 'Lanjut ke Pembayaran QRIS';
+        btnSubmit.className = 'w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition duration-200';
+      } else {
+        tabTrial.className = 'py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white shadow';
+        tabBuy.className = 'py-2 text-xs font-semibold rounded-lg text-slate-300 hover:text-white';
+        buySection.classList.add('hidden');
+        trialSection.classList.remove('hidden');
+        btnSubmit.innerText = '⏱️ Klaim Trial 60 Menit Gratis';
+        btnSubmit.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition duration-200';
+      }
+    }
+
+    function calculatePrice(val) {
       const days = parseInt(val, 10);
       const total = days * PRICE_PER_DAY;
       document.getElementById('labelDays').innerText = `${days} Hari`;
       document.getElementById('labelPrice').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 
-    async function submitOrder() {
+    async function handleSubmit() {
       const username = document.getElementById('username').value.trim();
       const protocol = document.getElementById('protocol').value;
-      const days = parseInt(document.getElementById('inputDays').value, 10);
       const btn = document.getElementById('btnSubmit');
 
-      if (!username) return alert('Silakan isi username terlebih dahulu!');
+      if (!username) return alert('Username wajib diisi!');
 
       btn.disabled = true;
-      btn.innerText = 'Membuat tagihan...';
+
+      // MODE TRIAL 60 MENIT
+      if (currentMode === 'trial') {
+        btn.innerText = 'Membuat trial 60 menit...';
+        try {
+          const res = await fetch('/api/trial', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, protocol })
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            document.getElementById('stepForm').classList.add('hidden');
+            document.getElementById('stepResult').classList.remove('hidden');
+            document.getElementById('resultBanner').innerText = '⏱️ Akun Trial 60 Menit Berhasil Diaktifkan!';
+            const out = typeof data.credentials === 'object' ? JSON.stringify(data.credentials, null, 2) : data.credentials;
+            document.getElementById('outputResult').value = out || 'Akun trial aktif.';
+          } else {
+            alert(data.error || 'Gagal klaim akun trial');
+            btn.disabled = false;
+            btn.innerText = '⏱️ Klaim Trial 60 Menit Gratis';
+          }
+        } catch (e) {
+          alert('Terjadi kendala jaringan');
+          btn.disabled = false;
+          btn.innerText = '⏱️ Klaim Trial 60 Menit Gratis';
+        }
+        return;
+      }
+
+      // MODE BELI
+      const days = parseInt(document.getElementById('inputDays').value, 10);
+      btn.innerText = 'Membuat tagihan QRIS...';
 
       try {
         const res = await fetch('/api/order', {
@@ -128,8 +207,7 @@
           document.getElementById('summaryDays').innerText = `${data.days} Hari`;
           document.getElementById('summaryPrice').innerText = 'Rp ' + Number(data.amount).toLocaleString('id-ID');
 
-          // Mulai polling pengecekan status bayar tiap 3 detik
-          startChecking(data.orderId);
+          startPolling(data.orderId);
         } else {
           alert(data.error || 'Gagal memproses pesanan.');
           btn.disabled = false;
@@ -142,7 +220,7 @@
       }
     }
 
-    function startChecking(orderId) {
+    function startPolling(orderId) {
       pollInterval = setInterval(async () => {
         try {
           const res = await fetch(`/api/check?orderId=${orderId}`);
@@ -153,11 +231,8 @@
             document.getElementById('stepQris').classList.add('hidden');
             document.getElementById('stepResult').classList.remove('hidden');
 
-            const resultText = typeof data.credentials === 'object' 
-              ? JSON.stringify(data.credentials, null, 2) 
-              : data.credentials;
-
-            document.getElementById('outputResult').value = resultText || 'Akun berhasil dibuat!';
+            const out = typeof data.credentials === 'object' ? JSON.stringify(data.credentials, null, 2) : data.credentials;
+            document.getElementById('outputResult').value = out || 'Akun berhasil dibuat!';
           }
         } catch (e) {
           console.error(e);
@@ -169,7 +244,7 @@
       const el = document.getElementById('outputResult');
       el.select();
       navigator.clipboard.writeText(el.value);
-      alert('Config berhasil disalin!');
+      alert('Config berhasil disalin ke clipboard!');
     }
   </script>
 </body>
