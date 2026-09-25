@@ -1,33 +1,51 @@
-import { createTrialAccount } from './dinns.js';
+import { createOfficialAccount } from './dinns.js';
+
+const memoryStore = global.orderStore || new Map();
+global.orderStore = memoryStore;
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
-
-  const { username, protocol } = req.body || {};
-  const cleanUser = (username || '').trim();
-  const selectedProto = protocol || 'vmess';
-
-  if (!cleanUser) {
-    return res.status(400).json({ error: 'Username wajib diisi!' });
-  }
+  const { orderId } = req.query;
+  if (!orderId) return res.status(400).json({ error: 'Order ID wajib disertakan' });
 
   try {
-    // Panggil fungsi dari dinns.js
-    const result = await createTrialAccount(cleanUser, selectedProto);
-    return res.status(200).json({ success: true, credentials: result });
+    let order = null;
 
-  } catch (err) {
-    const errorDetail = err.response?.data || err.message;
-    console.error('Error Trial Dinns:', errorDetail);
+    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      try {
+        const { Redis } = await import('@upstash/redis');
+        const redis = Redis.fromEnv();
+        const raw = await redis.get(orderId);
+        order = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch (e) {
+        order = memoryStore.get(orderId);
+      }
+    } else {
+      order = memoryStore.get(orderId);
+    }
 
-    // Kirim pesan error asli dari server Dinns ke layar user
-    return res.status(500).json({ 
-      error: typeof errorDetail === 'object' ? JSON.stringify(errorDetail) : errorDetail 
+    if (!order) return res.status(404).json({ error: 'Pesanan tidak ditemukan' });
+
+    // Jika sudah lunas dan belum dibuatkan akun
+    if (order.status === 'PAID' && !order.credentials) {
+      try {
+        order.credentials = await createOfficialAccount(
+          order.username,
+          order.password,
+          order.protocol,
+          order.days
+        );
+      } catch (err) {
+        order.credentials = 'Gagal generate akun Dinns: ' + (err.response?.data?.message || err.message);
+      }
+    }
+
+    return res.status(200).json({
+      status: order.status,
+      credentials: order.credentials
     });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 }
