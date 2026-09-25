@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Auto Store VPN - QRIS & Trial Instan</title>
+  <title>Auto Store VPN - QRIS & Multi-Protocol Trial</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4 font-sans">
@@ -11,7 +11,7 @@
   <div class="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
     <div class="text-center mb-5">
       <h1 class="text-2xl font-bold text-blue-400">⚡ Auto VPN Store</h1>
-      <p class="text-xs text-slate-400 mt-1">Trial instan 60 menit & pembelian QRIS otomatis</p>
+      <p class="text-xs text-slate-400 mt-1">SSH, VMess, VLess, Trojan & QRIS Otomatis</p>
     </div>
 
     <!-- TAB PILIHAN -->
@@ -41,12 +41,12 @@
 
       <!-- PILIHAN PROTOKOL -->
       <div>
-        <label class="block text-xs font-semibold mb-1 text-slate-300">Pilihan Layanan</label>
+        <label class="block text-xs font-semibold mb-1 text-slate-300">Pilihan Layanan / Protokol</label>
         <select id="protocol" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
           <option value="ssh">SSH & OpenVPN</option>
           <option value="vmess">VMess WebSocket</option>
           <option value="vless">VLess WebSocket</option>
-          <option value="trojan">Trojan</option>
+          <option value="trojan">Trojan TCP / WS</option>
         </select>
       </div>
 
@@ -74,10 +74,10 @@
       <!-- KONTEN KHUSUS MODE TRIAL RANDOM -->
       <div id="trialSection" class="hidden bg-emerald-950/30 p-3.5 rounded-lg border border-emerald-800/60 text-emerald-300 text-xs space-y-1.5">
         <div class="font-semibold flex items-center gap-1.5">
-          <span>⚡</span> Trial Otomatis (Tanpa Isi Akun)
+          <span>⚡</span> Trial Otomatis 60 Menit
         </div>
         <p class="text-slate-300 text-[11px] leading-relaxed">
-          Sistem akan membuatkan akun uji coba secara otomatis di server VPS dengan masa aktif <b>60 Menit</b>. Cukup klik tombol di bawah untuk langsung mencoba.
+          Pilih protokol di atas (<b>SSH, VMess, VLess, atau Trojan</b>), lalu klik tombol di bawah untuk mendapatkan akun uji coba 60 menit secara langsung.
         </p>
       </div>
 
@@ -110,8 +110,23 @@
         <label class="block text-xs font-semibold mb-1 text-slate-300">Detail Lengkap Akun:</label>
         <textarea id="outputResult" readonly rows="12" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
       </div>
-      <button onclick="copyAccount()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-medium">
-        📋 Salin Detail Akun
+
+      <!-- TOMBOL CEPAT KHUSUS SALIN SSH (Akan muncul jika jenis akun SSH) -->
+      <div id="sshQuickCopy" class="hidden grid grid-cols-2 gap-2 text-xs">
+        <button onclick="copySpecific('port80')" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-200 font-medium border border-slate-600 text-center">
+          📋 Salin Port 80
+        </button>
+        <button onclick="copySpecific('port443')" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-200 font-medium border border-slate-600 text-center">
+          📋 Salin Port 443
+        </button>
+        <button onclick="copySpecific('payload')" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-200 font-medium border border-slate-600 text-center col-span-2">
+          🌐 Salin Payload WebSocket
+        </button>
+      </div>
+
+      <!-- TOMBOL SALIN UTAMA -->
+      <button onclick="copyAccount()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-xs font-semibold shadow">
+        📋 Salin Seluruh Info Akun
       </button>
       <button onclick="location.reload()" class="w-full text-xs text-slate-400 hover:text-white underline">
         Kembali ke Menu Awal
@@ -123,6 +138,9 @@
     let currentMode = 'buy';
     const PRICE_PER_DAY = 300;
     let pollInterval = null;
+
+    // Variabel penampung data untuk tombol copy cepat
+    let activeAccountData = null;
 
     function switchMode(mode) {
       currentMode = mode;
@@ -159,20 +177,27 @@
       document.getElementById('labelPrice').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 
-    // Parser khusus untuk merapikan format JSON Dinns
-    function formatVpnOutput(res) {
+    // Parser Universal untuk SSH, VMess, VLess, dan Trojan
+    function formatVpnOutput(res, protocol) {
       const item = (res && res.data) ? res.data : res;
 
-      if (!item || (!item.username && !item.host)) {
+      if (!item) {
         return typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res);
       }
 
-      const p = item.ports || {};
-      const f = item.formats || {};
-      const pl = item.payloads || {};
+      // Simpan data mentah agar bisa di-copy per bagian
+      activeAccountData = item;
 
-      return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       DETAIL AKUN VPN / SSH
+      // Jika formatnya SSH (punya openSSH/dropbear/badVPN)
+      if (protocol === 'ssh' || item.ports?.openSSH) {
+        document.getElementById('sshQuickCopy').classList.remove('hidden');
+
+        const p = item.ports || {};
+        const f = item.formats || {};
+        const pl = item.payloads || {};
+
+        return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       DETAIL AKUN SSH / OVPN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Status        : Aktif
 Username      : ${item.username || '-'}
@@ -207,6 +232,40 @@ LINK PENTING:
 • Simpan Txt  : ${item.saveLink || '-'}
 • Dashboard   : ${item.dashboard_url || '-'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      }
+
+      // Sembunyikan quick copy SSH jika protokolnya Xray
+      document.getElementById('sshQuickCopy').classList.add('hidden');
+
+      const protoTitle = (protocol || 'XRAY').toUpperCase();
+      const uuidOrPass = item.uuid || item.password || item.id || '-';
+      const portTls = item.port_tls || item.ports?.tls || '443';
+      const portNtls = item.port_ntls || item.ports?.ntls || '80';
+      const pathWs = item.path || `/${protocol}`;
+      
+      const linkTls = item.link_tls || item.vmess_tls || item.vless_tls || item.trojan_tls || item.link || '-';
+      const linkNtls = item.link_ntls || item.vmess_ntls || item.vless_ntls || item.trojan_ntls || '-';
+
+      return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     DETAIL AKUN ${protoTitle}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status        : Aktif
+Remarks/User  : ${item.username || item.remarks || '-'}
+Domain / Host : ${item.host || item.domain || 'id.dinns.my.id'}
+IP Server     : ${item.ip || '-'}
+UUID / Pass   : ${uuidOrPass}
+Port TLS      : ${portTls}
+Port Non-TLS  : ${portNtls}
+Network       : ${item.network || 'ws'}
+Path WS       : ${pathWs}
+Masa Aktif    : ${item.expired || '60 Minutes'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LINK CONFIG (TLS):
+${linkTls}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LINK CONFIG (NON-TLS):
+${linkNtls}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
     }
 
     async function handleSubmit() {
@@ -216,12 +275,11 @@ LINK PENTING:
       btn.disabled = true;
 
       // ==========================================
-      // 1. EKSEKUSI TRIAL CLIENT-SIDE FETCH (Anti-Timeout)
+      // 1. EKSEKUSI TRIAL CLIENT-SIDE
       // ==========================================
       if (currentMode === 'trial') {
         btn.innerText = 'Membuat akun di VPS...';
 
-        // Langsung tembak VPS dari browser user
         const authKey = 'pl67k9xp37';
         const targetUrl = `https://id.dinns.my.id/api/trial-${protocol}?auth=${authKey}`;
 
@@ -235,13 +293,14 @@ LINK PENTING:
 
           const data = await res.json();
 
-          if (data && data.status === 'success') {
+          if (data && (data.status === 'success' || data.data)) {
             document.getElementById('stepForm').classList.add('hidden');
             document.getElementById('stepResult').classList.remove('hidden');
-            document.getElementById('resultBanner').innerText = `⚡ Trial 60 Menit Aktif! (${data.data.username})`;
             
-            // Masukkan config rapi ke textarea
-            document.getElementById('outputResult').value = formatVpnOutput(data);
+            const userLabel = data.data?.username || data.data?.remarks || protocol.toUpperCase();
+            document.getElementById('resultBanner').innerText = `⚡ Trial 60 Menit Aktif! (${userLabel})`;
+            
+            document.getElementById('outputResult').value = formatVpnOutput(data, protocol);
           } else {
             alert(data.message || 'Gagal membuat akun trial di VPS');
             btn.disabled = false;
@@ -293,7 +352,7 @@ LINK PENTING:
           document.getElementById('summaryDays').innerText = `${data.days} Hari`;
           document.getElementById('summaryPrice').innerText = 'Rp ' + Number(data.amount).toLocaleString('id-ID');
 
-          startPolling(data.orderId);
+          startPolling(data.orderId, protocol);
         } else {
           alert(data.error || 'Gagal membuat QRIS');
           btn.disabled = false;
@@ -306,7 +365,7 @@ LINK PENTING:
       }
     }
 
-    function startPolling(orderId) {
+    function startPolling(orderId, protocol) {
       pollInterval = setInterval(async () => {
         try {
           const res = await fetch(`/api/check?orderId=${orderId}`);
@@ -317,7 +376,7 @@ LINK PENTING:
             document.getElementById('stepQris').classList.add('hidden');
             document.getElementById('stepResult').classList.remove('hidden');
             document.getElementById('resultBanner').innerText = '🎉 Pembayaran Berhasil! Akun Aktif.';
-            document.getElementById('outputResult').value = formatVpnOutput(data.credentials);
+            document.getElementById('outputResult').value = formatVpnOutput(data.credentials, protocol);
           }
         } catch (e) {
           console.error(e);
@@ -325,11 +384,36 @@ LINK PENTING:
       }, 3000);
     }
 
+    // Salin seluruh isi textarea
     function copyAccount() {
       const el = document.getElementById('outputResult');
       el.select();
       navigator.clipboard.writeText(el.value);
-      alert('Detail akun berhasil disalin ke clipboard!');
+      alert('Semua info akun berhasil disalin!');
+    }
+
+    // Salin elemen SSH spesifik
+    function copySpecific(type) {
+      if (!activeAccountData) return alert('Data akun tidak tersedia');
+
+      let textToCopy = '';
+      const f = activeAccountData.formats || {};
+      const pl = activeAccountData.payloads || {};
+
+      if (type === 'port80') {
+        textToCopy = f.port80 || `${activeAccountData.host}:80@${activeAccountData.username}:${activeAccountData.password}`;
+      } else if (type === 'port443') {
+        textToCopy = f.port443 || `${activeAccountData.host}:443@${activeAccountData.username}:${activeAccountData.password}`;
+      } else if (type === 'payload') {
+        textToCopy = pl.enhanced || pl.wsTls || pl.wsNtls || '';
+      }
+
+      if (!textToCopy) {
+        return alert('Data tidak ditemukan untuk disalin.');
+      }
+
+      navigator.clipboard.writeText(textToCopy);
+      alert(`Berhasil disalin: ${textToCopy}`);
     }
   </script>
 </body>
