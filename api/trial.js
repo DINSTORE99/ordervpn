@@ -6,81 +6,40 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method === 'GET') return res.status(200).json({ status: 'Trial API Ready' });
 
   const { protocol } = req.body || {};
   const proto = protocol || 'ssh';
 
-  // 1. Generate Username Random format TrialXXXXX
-  const randNum = Math.floor(10000 + Math.random() * 90000);
-  const trialUser = `Trial${randNum}`;
-  const trialPass = '1';
+  // Endpoint panel Dinns dengan auth key Anda
+  const authKey = 'pl67k9xp37';
+  
+  // Menyesuaikan endpoint jika user memilih ssh, vmess, vless, atau trojan
+  const targetUrl = `https://id.dinns.my.id/api/trial-${proto}?auth=${authKey}`;
 
-  let resultData = null;
-
-  // 2. Coba request ke API Dinns dengan timeout singkat (2.5 detik)
   try {
-    const response = await axios.post(
-      `https://id.dinns.my.id/api/trial/${proto}`,
-      { username: trialUser, password: trialPass },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.DINNS_API_KEY || ''}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 2500
-      }
-    );
+    const response = await axios.get(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      },
+      timeout: 15000
+    });
 
-    if (response.data) {
-      resultData = response.data;
+    if (response.data && response.data.status === 'success') {
+      return res.status(200).json({
+        success: true,
+        credentials: response.data
+      });
+    } else {
+      return res.status(400).json({
+        error: response.data?.message || 'Gagal membuat akun trial di server.'
+      });
     }
-  } catch (err) {
-    // Jika timeout / server VPS tidak merespons, kita buatkan data sesuai struktur JSON Dinns
-    resultData = {
-      status: "success",
-      data: {
-        username: trialUser,
-        password: trialPass,
-        host: "id.dinns.my.id",
-        ip: "116.212.74.46",
-        ports: {
-          openSSH: "22",
-          dropbear: "143, 109",
-          dropbearWS: "443, 109",
-          sshUDP: "1-65535",
-          ovpnWSSSL: "443",
-          ovpnSSL: "443",
-          ovpnTCP: "1194",
-          ovpnUDP: "2200",
-          badVPN: "7100, 7300",
-          sshWS: "80, 8080",
-          sshWSSSL: "443"
-        },
-        formats: {
-          port80: `id.dinns.my.id:80@${trialUser}:${trialPass}`,
-          port443: `id.dinns.my.id:443@${trialUser}:${trialPass}`,
-          udp: `id.dinns.my.id:1-65535@${trialUser}:${trialPass}`
-        },
-        ovpnDownload: "https://id.dinns.my.id:81",
-        saveLink: `https://id.dinns.my.id:81/ssh-${trialUser}.txt`,
-        payloads: {
-          wsNtls: "GET / HTTP/1.1[crlf]Host: [host][crlf]Connection: Upgrade[crlf]User-Agent: [ua][crlf]Upgrade: ws[crlf][crlf]",
-          wsTls: "GET / HTTP/1.1[crlf]Host: [host][crlf]Connection: Upgrade[crlf]User-Agent: [ua][crlf]Upgrade: ws[crlf][crlf]",
-          enhanced: "PATCH / HTTP/1.1[crlf]Host: id.dinns.my.id[crlf]Host: bug.com[crlf]Upgrade: websocket[crlf]Connection: Upgrade[crlf][crlf]"
-        },
-        created: new Date().toISOString().split('T')[0],
-        expired: "60 Minutes",
-        isp: "PT Deneva",
-        city: "Jakarta",
-        dashboard_url: `https://id.dinns.my.id/api/dashboard/${proto}/${trialUser}`
-      }
-    };
-  }
 
-  // Kirim hasil ke frontend
-  return res.status(200).json({
-    success: true,
-    credentials: resultData
-  });
+  } catch (err) {
+    console.error('Error Dinns API:', err.response?.data || err.message);
+    const errMsg = err.response?.data?.message || err.message;
+    return res.status(500).json({
+      error: `Server VPS Error: ${errMsg}`
+    });
+  }
 };
