@@ -6,12 +6,12 @@
   <title>Auto Store VPN - QRIS & Trial Instan</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4 font-sans">
 
   <div class="max-w-md w-full bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
     <div class="text-center mb-5">
       <h1 class="text-2xl font-bold text-blue-400">⚡ Auto VPN Store</h1>
-      <p class="text-xs text-slate-400 mt-1">Trial random user 60 menit & pembelian QRIS fleksibel</p>
+      <p class="text-xs text-slate-400 mt-1">Trial instan 60 menit & pembelian QRIS otomatis</p>
     </div>
 
     <!-- TAB PILIHAN -->
@@ -24,34 +24,34 @@
       </button>
     </div>
 
-    <!-- FORM SECTION -->
+    <!-- FORM INPUT -->
     <div id="stepForm" class="space-y-4">
       
       <!-- INPUT KHUSUS ORDER RESMI: USERNAME & PASSWORD -->
       <div id="orderFields" class="space-y-3">
         <div>
           <label class="block text-xs font-semibold mb-1 text-slate-300">Username Akun</label>
-          <input type="text" id="username" placeholder="Masukkan username pilihan..." class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          <input type="text" id="username" placeholder="Masukkan username..." class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
         </div>
         <div>
           <label class="block text-xs font-semibold mb-1 text-slate-300">Password Akun</label>
-          <input type="text" id="password" placeholder="Masukkan password akun..." class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          <input type="text" id="password" placeholder="Masukkan password..." class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
         </div>
       </div>
 
-      <!-- PILIHAN PROTOKOL (TAMPIL DI KEDUA MODE) -->
+      <!-- PILIHAN PROTOKOL -->
       <div>
-        <label class="block text-xs font-semibold mb-1 text-slate-300">Pilihan Protokol</label>
+        <label class="block text-xs font-semibold mb-1 text-slate-300">Pilihan Layanan</label>
         <select id="protocol" class="w-full bg-slate-700 border border-slate-600 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          <option value="ssh">SSH & OpenVPN</option>
           <option value="vmess">VMess WebSocket</option>
           <option value="vless">VLess WebSocket</option>
           <option value="trojan">Trojan</option>
-          <option value="ssh">SSH Premium</option>
         </select>
       </div>
 
       <!-- KONTEN KHUSUS MODE BELI (SLIDER HARIAN) -->
-      <div id="buySection" class="bg-slate-750 p-3.5 rounded-lg border border-slate-700 space-y-3 bg-slate-700/30">
+      <div id="buySection" class="bg-slate-700/30 p-3.5 rounded-lg border border-slate-700 space-y-3">
         <div class="flex justify-between items-center">
           <label class="text-xs font-semibold text-slate-300">Durasi Aktif (Maks 30 Hari)</label>
           <span id="labelDays" class="text-sm font-bold text-blue-400">30 Hari</span>
@@ -77,7 +77,7 @@
           <span>⚡</span> Trial Otomatis (Tanpa Isi Akun)
         </div>
         <p class="text-slate-300 text-[11px] leading-relaxed">
-          Sistem akan membuatkan <b>Username Acak</b> secara otomatis dengan masa aktif <b>60 Menit</b>. Cukup klik tombol di bawah untuk langsung mencoba.
+          Sistem akan membuatkan akun uji coba secara otomatis dengan masa aktif <b>60 Menit</b>. Cukup klik tombol di bawah untuk langsung mencoba.
         </p>
       </div>
 
@@ -96,22 +96,22 @@
         <div id="summaryPrice" class="text-2xl font-bold text-emerald-400">Rp 0</div>
       </div>
       <div class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 p-2.5 rounded-lg">
-        ⏳ Silakan scan QRIS di atas melalui E-Wallet / Mobile Banking.<br>
-        Config akun Anda akan otomatis muncul di sini setelah pembayaran diterima.
+        ⏳ Silakan scan QRIS di atas via Mobile Banking atau E-Wallet.<br>
+        Akun Anda akan otomatis muncul begitu pembayaran terverifikasi.
       </div>
     </div>
 
-    <!-- HASIL CONFIG / AKUN -->
+    <!-- HASIL DETAIL AKUN -->
     <div id="stepResult" class="hidden space-y-4">
-      <div id="resultBanner" class="p-3 bg-emerald-950 border border-emerald-500 text-emerald-300 rounded-lg text-center text-xs">
-        🎉 Akun VPN Berhasil Dibuat!
+      <div id="resultBanner" class="p-3 bg-emerald-950 border border-emerald-500 text-emerald-300 rounded-lg text-center text-xs font-semibold">
+        🎉 Akun Berhasil Dibuat!
       </div>
       <div>
-        <label class="block text-xs font-semibold mb-1 text-slate-300">Config / Detail Akun:</label>
-        <textarea id="outputResult" readonly rows="7" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
+        <label class="block text-xs font-semibold mb-1 text-slate-300">Detail Lengkap Akun:</label>
+        <textarea id="outputResult" readonly rows="12" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
       </div>
       <button onclick="copyAccount()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg text-xs font-medium">
-        📋 Salin Config ke Clipboard
+        📋 Salin Detail Akun
       </button>
       <button onclick="location.reload()" class="w-full text-xs text-slate-400 hover:text-white underline">
         Kembali ke Menu Awal
@@ -147,7 +147,7 @@
         orderFields.classList.add('hidden');
         buySection.classList.add('hidden');
         trialSection.classList.remove('hidden');
-        btnSubmit.innerText = '⚡ Ambil Trial 60 Menit (Akun Acak)';
+        btnSubmit.innerText = '⚡ Ambil Trial 60 Menit Gratis';
         btnSubmit.className = 'w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg transition duration-200';
       }
     }
@@ -159,15 +159,65 @@
       document.getElementById('labelPrice').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 
+    // Parser khusus untuk mencocokkan format JSON dari doc dinns.my.id
+    function formatVpnOutput(res) {
+      const item = (res && res.data) ? res.data : res;
+
+      if (!item || (!item.username && !item.host)) {
+        return typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res);
+      }
+
+      const p = item.ports || {};
+      const f = item.formats || {};
+      const pl = item.payloads || {};
+
+      return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       DETAIL AKUN VPN / SSH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status        : Aktif
+Username      : ${item.username || '-'}
+Password      : ${item.password || '-'}
+Host / Domain : ${item.host || '-'}
+IP Server     : ${item.ip || '-'}
+Lokasi / ISP  : ${item.city || '-'} (${item.isp || '-'})
+Dibuat        : ${item.created || '-'}
+Masa Aktif    : ${item.expired || '-'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PORT DETAIL:
+• OpenSSH     : ${p.openSSH || '-'}
+• Dropbear    : ${p.dropbear || '-'}
+• Dropbear WS : ${p.dropbearWS || '-'}
+• SSH WS      : ${p.sshWS || '-'}
+• SSH WS SSL  : ${p.sshWSSSL || '-'}
+• SSH UDP     : ${p.sshUDP || '-'}
+• OVPN TCP    : ${p.ovpnTCP || '-'}
+• OVPN UDP    : ${p.ovpnUDP || '-'}
+• BadVPN      : ${p.badVPN || '-'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMAT LOGIN:
+• Port 80     : ${f.port80 || '-'}
+• Port 443    : ${f.port443 || '-'}
+• UDP Custom  : ${f.udp || '-'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAYLOAD WS:
+${pl.enhanced || pl.wsTls || pl.wsNtls || '-'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LINK PENTING:
+• OVPN Config : ${item.ovpnDownload || '-'}
+• Simpan Txt  : ${item.saveLink || '-'}
+• Dashboard   : ${item.dashboard_url || '-'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+    }
+
     async function handleSubmit() {
       const protocol = document.getElementById('protocol').value;
       const btn = document.getElementById('btnSubmit');
 
       btn.disabled = true;
 
-      // 1. JIKA PILIH TRIAL RANDOM (60 MENIT)
+      // 1. EKSEKUSI TRIAL 60 MENIT
       if (currentMode === 'trial') {
-        btn.innerText = 'Membuat akun acak...';
+        btn.innerText = 'Membuat akun trial...';
         try {
           const res = await fetch('/api/trial', {
             method: 'POST',
@@ -182,23 +232,22 @@
           if (res.ok && data.success) {
             document.getElementById('stepForm').classList.add('hidden');
             document.getElementById('stepResult').classList.remove('hidden');
-            document.getElementById('resultBanner').innerText = `⚡ Trial 60 Menit Aktif (${data.username})`;
-            const out = typeof data.credentials === 'object' ? JSON.stringify(data.credentials, null, 2) : data.credentials;
-            document.getElementById('outputResult').value = out || 'Akun trial aktif.';
+            document.getElementById('resultBanner').innerText = '⚡ Trial 60 Menit Aktif!';
+            document.getElementById('outputResult').value = formatVpnOutput(data.credentials);
           } else {
             alert(data.error || 'Gagal klaim trial');
             btn.disabled = false;
-            btn.innerText = '⚡ Ambil Trial 60 Menit (Akun Acak)';
+            btn.innerText = '⚡ Ambil Trial 60 Menit Gratis';
           }
         } catch (e) {
           alert('Error: ' + e.message);
           btn.disabled = false;
-          btn.innerText = '⚡ Ambil Trial 60 Menit (Akun Acak)';
+          btn.innerText = '⚡ Ambil Trial 60 Menit Gratis';
         }
         return;
       }
 
-      // 2. JIKA PILIH BELI (QRIS DENGAN USERNAME & PASSWORD)
+      // 2. EKSEKUSI PEMBELIAN (QRIS)
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const days = parseInt(document.getElementById('inputDays').value, 10);
@@ -256,9 +305,8 @@
             clearInterval(pollInterval);
             document.getElementById('stepQris').classList.add('hidden');
             document.getElementById('stepResult').classList.remove('hidden');
-
-            const out = typeof data.credentials === 'object' ? JSON.stringify(data.credentials, null, 2) : data.credentials;
-            document.getElementById('outputResult').value = out || 'Akun berhasil dibuat!';
+            document.getElementById('resultBanner').innerText = '🎉 Pembayaran Berhasil! Akun Aktif.';
+            document.getElementById('outputResult').value = formatVpnOutput(data.credentials);
           }
         } catch (e) {
           console.error(e);
@@ -270,7 +318,7 @@
       const el = document.getElementById('outputResult');
       el.select();
       navigator.clipboard.writeText(el.value);
-      alert('Config berhasil disalin ke clipboard!');
+      alert('Detail akun berhasil disalin ke clipboard!');
     }
   </script>
 </body>
