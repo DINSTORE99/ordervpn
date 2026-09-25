@@ -1,27 +1,25 @@
 const axios = require('axios');
 
-const CONFIG = {
-  BASE_URL: 'https://id.dinns.my.id/api',
-  API_KEY: process.env.DINNS_API_KEY || ''
-};
+const AUTH_KEY = 'pl67k9xp37';
 
 async function createOfficialAccount(username, password, protocol, days) {
   const proto = protocol || 'ssh';
-  const url = `${CONFIG.BASE_URL}/create/${proto}`;
+
+  // Format pembuatan akun resmi panel Dinns
+  const targetUrl = `https://id.dinns.my.id/api/create-${proto}?auth=${AUTH_KEY}`;
 
   const payload = {
     username: username,
     password: password,
-    exp: days // jumlah hari aktif
+    exp: days
   };
 
-  const response = await axios.post(url, payload, {
+  const response = await axios.post(targetUrl, payload, {
     headers: {
-      'Authorization': `Bearer ${CONFIG.API_KEY}`,
       'Content-Type': 'application/json',
-      'Accept': 'application/json'
+      'User-Agent': 'Mozilla/5.0'
     },
-    timeout: 10000
+    timeout: 15000
   });
 
   return response.data;
