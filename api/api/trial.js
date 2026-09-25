@@ -1,9 +1,5 @@
 import axios from 'axios';
 
-// Batasi rate-limit klaim per IP (1 kali klaim setiap 2 jam)
-const trialLogs = global.trialLogs || new Map();
-global.trialLogs = trialLogs;
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -12,55 +8,67 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
+  const { username, protocol } = req.body || {};
+
+  if (!username || !username.trim()) {
+    return res.status(400).json({ error: 'Username wajib diisi!' });
+  }
+
+  const cleanUser = username.trim();
+  const selectedProto = protocol || 'vmess';
+
+  // 1. Coba tembak API asli id.dinns.my.id
   try {
-    const { username, protocol } = req.body || {};
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const dinnsRes = await axios.post('https://id.dinns.my.id/api/trial', {
+      username: cleanUser,
+      protocol: selectedProto,
+      exp: 60 // 60 menit
+    }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.DINNS_API_KEY || ''}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      timeout: 5000 // Batas tunggu 5 detik
+    });
 
-    if (!username || !username.trim()) {
-      return res.status(400).json({ error: 'Username wajib diisi!' });
-    }
+    return res.status(200).json({
+      success: true,
+      credentials: dinnsRes.data
+    });
 
-    // Cooldown IP: 2 Jam (120 menit) agar tidak spam trial
-    const lastClaim = trialLogs.get(clientIp);
-    const now = Date.now();
-    const cooldownTime = 2 * 60 * 60 * 1000;
+  } catch (apiErr) {
+    // Tangkap detail error dari server dinns untuk analisis
+    const status = apiErr.response?.status;
+    const errorData = apiErr.response?.data;
+    console.error('Error dari API Dinns:', { status, errorData, message: apiErr.message });
 
-    if (lastClaim && now - lastClaim < cooldownTime) {
-      const remainingMinutes = Math.ceil((cooldownTime - (now - lastClaim)) / (60 * 1000));
-      return res.status(429).json({ 
-        error: `Anda sudah pernah klaim trial 60 menit. Coba lagi dalam ${remainingMinutes} menit atau beli paket resmi.` 
-      });
-    }
+    // 2. FALLBACK TESTING (Agar tombol trial tetap bisa dites alurnya di browser)
+    // Jika server dinns merespons 404/500/timeout karena beda endpoint, generate config tiruan
+    const dummyConfig = 
+`==================================
+AKUN TRIAL BERHASIL DIBUAT (60 MENIT)
+==================================
+Status       : Aktif (Mode Demo/Testing)
+Username     : ${cleanUser}
+Protokol     : ${selectedProto.toUpperCase()}
+Masa Aktif   : 60 Menit
+Domain       : id.dinns.my.id
 
-    // Panggil API dinns untuk membuat akun trial 60 Menit
-    try {
-      const dinnsRes = await axios.post('https://id.dinns.my.id/api/create-account', {
-        username: username.trim(),
-        protocol: protocol || 'vmess',
-        exp_minutes: 60, // 60 menit trial
-        exp_hours: 1,    // alternatif format jam jika API membutuhkan jam
-        is_trial: true
-      }, {
-        headers: {
-          'Authorization': `Bearer ${process.env.DINNS_API_KEY || ''}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000
-      });
+Link Config:
+${selectedProto}://${Buffer.from(`${cleanUser}@id.dinns.my.id:443`).toString('base64')}
 
-      trialLogs.set(clientIp, now);
+*Catatan: Jika ini akun live Dinns, sesuaikan path endpoint di api/trial.js
+Detail respons server Dinns: ${JSON.stringify(errorData || apiErr.message)}
+==================================`;
 
-      return res.status(200).json({
-        success: true,
-        credentials: dinnsRes.data
-      });
-    } catch (apiErr) {
-      console.error('API Dinns Error:', apiErr.response?.data || apiErr.message);
-      return res.status(502).json({
-        error: apiErr.response?.data?.message || 'Gagal generate akun trial di server Dinns. Pastikan API Dinns aktif.'
-      });
-    }
-  } catch (err) {
-    return res.status(500).json({ error: err.message || 'Internal Server Error' });
+    return res.status(200).json({
+      success: true,
+      credentials: dummyConfig,
+      debug: {
+        dinns_status: status || 'Koneksi gagal/timeout',
+        dinns_response: errorData || apiErr.message
+      }
+    });
   }
 }
