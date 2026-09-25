@@ -1,38 +1,37 @@
 import axios from 'axios';
 
-// ==============================================================
-// ⚙️ PENGATURAN API DINNS (UBAH DI SINI)
-// ==============================================================
 const CONFIG = {
-  // Base URL API Anda
   BASE_URL: 'https://id.dinns.my.id/api',
-
-  // Masukkan API Key Anda di sini (atau pasang di Environment Variables Vercel)
   API_KEY: process.env.DINNS_API_KEY || 'MASUKKAN_API_KEY_ANDA_DI_SINI',
 
-  // Model Header: Kebanyakan panel menggunakan Bearer Token atau X-API-KEY
   getHeaders() {
     return {
       'Authorization': `Bearer ${this.API_KEY}`,
-      // Jika panel menggunakan X-API-KEY, ganti baris di atas dengan:
-      // 'x-api-key': this.API_KEY,
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     };
   }
 };
 
+// Fungsi generate random username untuk trial (contoh: trial_a8c2f1)
+export function generateRandomUsername() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let rand = '';
+  for (let i = 0; i < 6; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `trial_${rand}`;
+}
+
 /**
- * 1. FUNGSI UNTUK TRIAL (60 Menit)
+ * 1. API TRIAL (60 Menit) - Otomatis Random User
  */
 export async function createTrialAccount(username, protocol) {
-  // Sesuaikan nama endpoint dan body sesuai https://id.dinns.my.id/api/doc
-  // Contoh endpoint: /trial atau /vmess/trial
   const url = `${CONFIG.BASE_URL}/trial`;
 
   const payload = {
     username: username,
-    protocol: protocol, // vmess, vless, trojan, ssh
+    protocol: protocol,
     exp: 60,            // 60 menit
     is_trial: true
   };
@@ -46,14 +45,14 @@ export async function createTrialAccount(username, protocol) {
 }
 
 /**
- * 2. FUNGSI UNTUK PEMBELIAN RESMI (1 - 30 Hari)
+ * 2. API ORDER RESMI (Username + Password + Durasi Hari)
  */
-export async function createOfficialAccount(username, protocol, days) {
-  // Contoh endpoint: /create atau /order/create
+export async function createOfficialAccount(username, password, protocol, days) {
   const url = `${CONFIG.BASE_URL}/create-account`;
 
   const payload = {
     username: username,
+    password: password,
     protocol: protocol,
     exp_days: days
   };
