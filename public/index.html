@@ -77,7 +77,7 @@
           <span>⚡</span> Trial Otomatis (Tanpa Isi Akun)
         </div>
         <p class="text-slate-300 text-[11px] leading-relaxed">
-          Sistem akan membuatkan akun uji coba secara otomatis dengan masa aktif <b>60 Menit</b>. Cukup klik tombol di bawah untuk langsung mencoba.
+          Sistem akan membuatkan akun uji coba secara otomatis di server VPS dengan masa aktif <b>60 Menit</b>. Cukup klik tombol di bawah untuk langsung mencoba.
         </p>
       </div>
 
@@ -159,7 +159,7 @@
       document.getElementById('labelPrice').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 
-    // Parser khusus untuk mencocokkan format JSON dari doc dinns.my.id
+    // Parser khusus untuk merapikan format JSON Dinns
     function formatVpnOutput(res) {
       const item = (res && res.data) ? res.data : res;
 
@@ -215,39 +215,50 @@ LINK PENTING:
 
       btn.disabled = true;
 
-      // 1. EKSEKUSI TRIAL 60 MENIT
+      // ==========================================
+      // 1. EKSEKUSI TRIAL CLIENT-SIDE FETCH (Anti-Timeout)
+      // ==========================================
       if (currentMode === 'trial') {
-        btn.innerText = 'Membuat akun trial...';
+        btn.innerText = 'Membuat akun di VPS...';
+
+        // Langsung tembak VPS dari browser user
+        const authKey = 'pl67k9xp37';
+        const targetUrl = `https://id.dinns.my.id/api/trial-${protocol}?auth=${authKey}`;
+
         try {
-          const res = await fetch('/api/trial', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ protocol })
+          const res = await fetch(targetUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json'
+            }
           });
 
-          const text = await res.text();
-          let data;
-          try { data = JSON.parse(text); } catch(e) { throw new Error('Format server error: ' + text); }
+          const data = await res.json();
 
-          if (res.ok && data.success) {
+          if (data && data.status === 'success') {
             document.getElementById('stepForm').classList.add('hidden');
             document.getElementById('stepResult').classList.remove('hidden');
-            document.getElementById('resultBanner').innerText = '⚡ Trial 60 Menit Aktif!';
-            document.getElementById('outputResult').value = formatVpnOutput(data.credentials);
+            document.getElementById('resultBanner').innerText = `⚡ Trial 60 Menit Aktif! (${data.data.username})`;
+            
+            // Masukkan config rapi ke textarea
+            document.getElementById('outputResult').value = formatVpnOutput(data);
           } else {
-            alert(data.error || 'Gagal klaim trial');
+            alert(data.message || 'Gagal membuat akun trial di VPS');
             btn.disabled = false;
             btn.innerText = '⚡ Ambil Trial 60 Menit Gratis';
           }
         } catch (e) {
-          alert('Error: ' + e.message);
+          console.error(e);
+          alert('Gagal menghubungi VPS Dinns: ' + e.message);
           btn.disabled = false;
           btn.innerText = '⚡ Ambil Trial 60 Menit Gratis';
         }
         return;
       }
 
+      // ==========================================
       // 2. EKSEKUSI PEMBELIAN (QRIS)
+      // ==========================================
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const days = parseInt(document.getElementById('inputDays').value, 10);
