@@ -1,0 +1,10 @@
+{
+  "name": "vpn-store-vercel",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@upstash/redis": "^1.31.0",
+    "axios": "^1.7.0",
+    "qrcode": "^1.5.3"
+  }
+}
