@@ -77,7 +77,7 @@
           <span>⚡</span> Trial Otomatis 60 Menit
         </div>
         <p class="text-slate-300 text-[11px] leading-relaxed">
-          Pilih protokol di atas (<b>SSH, VMess, VLess, atau Trojan</b>), lalu klik tombol di bawah untuk mendapatkan akun uji coba 60 menit secara langsung dari VPS.
+          Pilih protokol di atas (<b>SSH, VMess, VLess, atau Trojan</b>), lalu klik tombol di bawah untuk mendapatkan akun uji coba 60 menit langsung dari VPS.
         </p>
       </div>
 
@@ -96,8 +96,17 @@
         <div id="summaryPrice" class="text-2xl font-bold text-emerald-400">Rp 0</div>
       </div>
       <div class="text-xs text-amber-300 bg-amber-950/40 border border-amber-800/60 p-2.5 rounded-lg">
-        ⏳ Silakan scan QRIS di atas via Mobile Banking atau E-Wallet.<br>
-        Akun Anda akan otomatis muncul begitu pembayaran terverifikasi.
+        ⏳ Silakan scan QRIS di atas via ShopeePay, BCA, Dana, OVO, atau GoPay.<br>
+        Akun Anda akan otomatis aktif setelah pembayaran terverifikasi.
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <button onclick="checkPaymentStatus(currentOrderId, false)" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 rounded-lg text-xs transition duration-150">
+          🔄 Sudah Bayar? Cek Status Sekarang
+        </button>
+        <button onclick="checkPaymentStatus(currentOrderId, true)" class="w-full bg-slate-700/60 hover:bg-slate-700 text-slate-400 py-1.5 rounded-lg text-[11px] underline">
+          🧪 Simulasi Bayar (Mode Testing)
+        </button>
       </div>
     </div>
 
@@ -153,6 +162,7 @@
     let pollInterval = null;
     let activeAccountData = null;
     let activeProtocol = 'ssh';
+    let currentOrderId = null;
 
     function switchMode(mode) {
       currentMode = mode;
@@ -199,9 +209,7 @@
         return typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res);
       }
 
-      // ==========================================
       // 1. FORMAT UNTUK SSH / OPENVPN
-      // ==========================================
       if (protocol === 'ssh' || item.ports?.openSSH) {
         document.getElementById('sshQuickCopy').classList.remove('hidden');
         document.getElementById('xrayQuickCopy').classList.add('hidden');
@@ -248,9 +256,7 @@ LINK PENTING:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
       }
 
-      // ==========================================
       // 2. FORMAT UNTUK VMESS / VLESS / TROJAN (XRAY)
-      // ==========================================
       document.getElementById('sshQuickCopy').classList.add('hidden');
       document.getElementById('xrayQuickCopy').classList.remove('hidden');
 
@@ -259,7 +265,6 @@ LINK PENTING:
       const domain = item.domain || item.host || 'id.dinns.my.id';
       const exp = item.expired || '60 minutes';
 
-      // Ekstraksi Link Config
       const wsTls = item.ws_tls || item.link_tls || item.vmess_tls || item.vless_tls || item.trojan_tls || '-';
       const wsNoneTls = item.ws_none_tls || item.link_ntls || item.vmess_ntls || item.vless_ntls || item.trojan_ntls || '-';
       const grpc = item.grpc || item.link_grpc || '-';
@@ -267,7 +272,7 @@ LINK PENTING:
       const dashboard = item.dashboard_url || '-';
 
       return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     DETAIL AKUN ${protocol.toUpperCase()} (TRIAL)
+     DETAIL AKUN ${protocol.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Status        : Aktif
 Username      : ${user}
@@ -296,15 +301,11 @@ LINK PENTING:
 
       btn.disabled = true;
 
-      // ==========================================
-      // 1. EKSEKUSI TRIAL CLIENT-SIDE (ANTI-TIMEOUT)
-      // ==========================================
+      // 1. EKSEKUSI TRIAL CLIENT-SIDE
       if (currentMode === 'trial') {
         btn.innerText = `Membuat trial ${protocol.toUpperCase()}...`;
 
         const authKey = 'pl67k9xp37';
-
-        // Variasi endpoint panel Dinns
         const endpointsToTry = [
           `https://id.dinns.my.id/api/trial-${protocol}?auth=${authKey}`,
           `https://id.dinns.my.id/api/trial?type=${protocol}&auth=${authKey}`,
@@ -345,9 +346,7 @@ LINK PENTING:
         return;
       }
 
-      // ==========================================
-      // 2. EKSEKUSI PEMBELIAN (QRIS)
-      // ==========================================
+      // 2. EKSEKUSI PEMBELIAN (QRIS RESMI)
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const days = parseInt(document.getElementById('inputDays').value, 10);
@@ -355,7 +354,7 @@ LINK PENTING:
       if (!username) { btn.disabled = false; return alert('Username wajib diisi!'); }
       if (!password) { btn.disabled = false; return alert('Password wajib diisi!'); }
 
-      btn.innerText = 'Membuat tagihan QRIS...';
+      btn.innerText = 'Menghubungi Payment Gateway...';
 
       try {
         const res = await fetch('/api/order', {
@@ -369,6 +368,7 @@ LINK PENTING:
         try { data = JSON.parse(text); } catch(e) { throw new Error('Format server error: ' + text); }
 
         if (res.ok && data.success) {
+          currentOrderId = data.orderId;
           document.getElementById('stepForm').classList.add('hidden');
           document.getElementById('stepQris').classList.remove('hidden');
 
@@ -376,6 +376,7 @@ LINK PENTING:
           document.getElementById('summaryDays').innerText = `${data.days} Hari`;
           document.getElementById('summaryPrice').innerText = 'Rp ' + Number(data.amount).toLocaleString('id-ID');
 
+          // Mulai periksa status otomatis tiap 3.5 detik
           startPolling(data.orderId, protocol);
         } else {
           alert(data.error || 'Gagal membuat QRIS');
@@ -389,26 +390,37 @@ LINK PENTING:
       }
     }
 
-    function startPolling(orderId, protocol) {
-      pollInterval = setInterval(async () => {
-        try {
-          const res = await fetch(`/api/check?orderId=${orderId}`);
-          const data = await res.json();
+    // Fungsi cek pembayaran otomatis dan manual
+    async function checkPaymentStatus(orderId, isSimulation = false) {
+      if (!orderId) return;
+      try {
+        const url = `/api/check?orderId=${orderId}${isSimulation ? '&simulate_pay=true' : ''}`;
+        const res = await fetch(url);
+        const data = await res.json();
 
-          if (data.status === 'PAID') {
-            clearInterval(pollInterval);
-            document.getElementById('stepQris').classList.add('hidden');
-            document.getElementById('stepResult').classList.remove('hidden');
-            document.getElementById('resultBanner').innerText = '🎉 Pembayaran Berhasil! Akun Aktif.';
-            document.getElementById('outputResult').value = formatVpnOutput(data.credentials, protocol);
-          }
-        } catch (e) {
-          console.error(e);
+        if (data.status === 'PAID') {
+          if (pollInterval) clearInterval(pollInterval);
+          document.getElementById('stepQris').classList.add('hidden');
+          document.getElementById('stepResult').classList.remove('hidden');
+
+          const userLabel = data.credentials?.data?.username || data.credentials?.data?.user || 'Aktif';
+          document.getElementById('resultBanner').innerText = `🎉 Pembayaran Diterima! Akun ${userLabel} Berhasil Dibuat`;
+          document.getElementById('outputResult').value = formatVpnOutput(data.credentials, document.getElementById('protocol').value);
+        } else if (!isSimulation) {
+          alert('Pembayaran belum terdeteksi. Silakan selesaikan scan QRIS terlebih dahulu.');
         }
-      }, 3000);
+      } catch (e) {
+        console.error(e);
+      }
     }
 
-    // Salin seluruh isi textarea
+    function startPolling(orderId, protocol) {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(() => {
+        checkPaymentStatus(orderId, false);
+      }, 3500);
+    }
+
     function copyAccount() {
       const el = document.getElementById('outputResult');
       el.select();
@@ -416,7 +428,6 @@ LINK PENTING:
       alert('Semua rincian akun berhasil disalin ke clipboard!');
     }
 
-    // Salin elemen spesifik (Quick Copy)
     function copySpecific(type) {
       if (!activeAccountData) return alert('Data akun tidak tersedia');
 
@@ -424,17 +435,13 @@ LINK PENTING:
       const f = activeAccountData.formats || {};
       const pl = activeAccountData.payloads || {};
 
-      // 1. Pilihan SSH
       if (type === 'port80') {
         textToCopy = f.port80 || `${activeAccountData.host}:80@${activeAccountData.username}:${activeAccountData.password}`;
       } else if (type === 'port443') {
         textToCopy = f.port443 || `${activeAccountData.host}:443@${activeAccountData.username}:${activeAccountData.password}`;
       } else if (type === 'payload') {
         textToCopy = pl.enhanced || pl.wsTls || pl.wsNtls || '';
-      }
-      
-      // 2. Pilihan Xray (VMess, VLess, Trojan)
-      else if (type === 'tls') {
+      } else if (type === 'tls') {
         textToCopy = activeAccountData.ws_tls || activeAccountData.link_tls || '';
       } else if (type === 'ntls') {
         textToCopy = activeAccountData.ws_none_tls || activeAccountData.link_ntls || '';
