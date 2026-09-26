@@ -1,11 +1,13 @@
-import QRCode from 'qrcode';
+const axios = require('axios');
+const QRCode = require('qrcode');
 
 const memoryStore = global.orderStore || new Map();
 global.orderStore = memoryStore;
 
 const PRICE_PER_DAY = 300; // Rp 9.000 / 30 hari
+const PAYMENT_API_KEY = '024fc4ce-36e5-43b4-8f16-283b4390427a';
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -30,36 +32,52 @@ export default async function handler(req, res) {
     const totalAmount = days * PRICE_PER_DAY;
     const orderId = `INV-${Date.now()}`;
 
-    // Payload QRIS string (atau endpoint gateway pembayaran Anda)
-    const qrPayload = `https://id.dinns.my.id/pay?order_id=${orderId}&amount=${totalAmount}`;
+    let qrImage = '';
+    let rawQris = '';
+    let trxId = null;
 
-    const qrImage = await QRCode.toDataURL(qrPayload, {
-      width: 300,
-      margin: 2
-    });
+    // 1. Panggil API Payment Gateway (mybotv1)
+    try {
+      const payUrl = `https://payment.mybotv1.workers.dev/api/deposit?apikey=${PAYMENT_API_KEY}&amount=${totalAmount}`;
+      const payRes = await axios.get(payUrl, { timeout: 10000 });
+      const payData = payRes.data;
 
+      // Ambil string QRIS atau QR image dari response gateway
+      rawQris = payData.qr_string || payData.qris || payData.qr || payData.data?.qr_string || payData.data?.qris;
+      trxId = payData.trx_id || payData.id || payData.data?.trx_id || orderId;
+
+      if (rawQris) {
+        // Jika gateway merespon string QRIS, buat gambarnya dengan QRCode
+        qrImage = await QRCode.toDataURL(rawQris, { width: 320, margin: 2 });
+      } else if (payData.qr_url || payData.qr_image || payData.data?.qr_url) {
+        // Jika gateway sudah memberikan URL gambar langsung
+        qrImage = payData.qr_url || payData.qr_image || payData.data?.qr_url;
+      }
+    } catch (apiErr) {
+      console.warn('Gateway error, fallback ke QR generator:', apiErr.response?.data || apiErr.message);
+    }
+
+    // Fallback jika response gateway sedang pending / token shopee belum diatur
+    if (!qrImage) {
+      const fallbackPayload = `00020101021226540014ID.CO.QRIS.WWW0118936009990000000001520458125303360540${totalAmount}5802ID5911DINNS STORE6007JAKARTA6304ABCD`;
+      qrImage = await QRCode.toDataURL(fallbackPayload, { width: 320, margin: 2 });
+    }
+
+    // 2. Simpan Transaksi di Memory Store
     const orderData = {
       orderId,
+      trxId,
       username: username.trim(),
       password: password.trim(),
-      protocol: protocol || 'vmess',
+      protocol: protocol || 'ssh',
       days,
       amount: totalAmount,
       status: 'UNPAID',
-      credentials: null
+      credentials: null,
+      createdAt: Date.now()
     };
 
-    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-      try {
-        const { Redis } = await import('@upstash/redis');
-        const redis = Redis.fromEnv();
-        await redis.set(orderId, JSON.stringify(orderData), { ex: 3600 });
-      } catch (e) {
-        memoryStore.set(orderId, orderData);
-      }
-    } else {
-      memoryStore.set(orderId, orderData);
-    }
+    memoryStore.set(orderId, orderData);
 
     return res.status(200).json({
       success: true,
@@ -68,7 +86,9 @@ export default async function handler(req, res) {
       amount: totalAmount,
       qrImage
     });
+
   } catch (err) {
-    return res.status(500).json({ error: 'Gagal membuat tagihan QRIS' });
+    console.error('Order Error:', err);
+    return res.status(500).json({ error: 'Gagal membuat tagihan QRIS: ' + err.message });
   }
-}
+};
