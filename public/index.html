@@ -77,7 +77,7 @@
           <span>⚡</span> Trial Otomatis 60 Menit
         </div>
         <p class="text-slate-300 text-[11px] leading-relaxed">
-          Pilih protokol di atas (<b>SSH, VMess, VLess, atau Trojan</b>), lalu klik tombol di bawah untuk mendapatkan akun uji coba 60 menit secara langsung.
+          Pilih protokol di atas (<b>SSH, VMess, VLess, atau Trojan</b>), lalu klik tombol di bawah untuk mendapatkan akun uji coba 60 menit secara langsung dari VPS.
         </p>
       </div>
 
@@ -108,10 +108,10 @@
       </div>
       <div>
         <label class="block text-xs font-semibold mb-1 text-slate-300">Detail Lengkap Akun:</label>
-        <textarea id="outputResult" readonly rows="12" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
+        <textarea id="outputResult" readonly rows="13" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
       </div>
 
-      <!-- TOMBOL CEPAT KHUSUS SALIN SSH (Akan muncul jika jenis akun SSH) -->
+      <!-- TOMBOL CEPAT KHUSUS SALIN SSH -->
       <div id="sshQuickCopy" class="hidden grid grid-cols-2 gap-2 text-xs">
         <button onclick="copySpecific('port80')" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-200 font-medium border border-slate-600 text-center">
           📋 Salin Port 80
@@ -121,6 +121,19 @@
         </button>
         <button onclick="copySpecific('payload')" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-200 font-medium border border-slate-600 text-center col-span-2">
           🌐 Salin Payload WebSocket
+        </button>
+      </div>
+
+      <!-- TOMBOL CEPAT KHUSUS VMESS / VLESS / TROJAN -->
+      <div id="xrayQuickCopy" class="hidden grid grid-cols-2 gap-2 text-xs">
+        <button onclick="copySpecific('tls')" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-200 font-medium border border-slate-600 text-center">
+          🔒 Salin WS TLS (443)
+        </button>
+        <button onclick="copySpecific('ntls')" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-200 font-medium border border-slate-600 text-center">
+          🔓 Salin WS Non-TLS (80)
+        </button>
+        <button onclick="copySpecific('grpc')" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg text-slate-200 font-medium border border-slate-600 text-center col-span-2">
+          ⚡ Salin Link gRPC
         </button>
       </div>
 
@@ -138,9 +151,8 @@
     let currentMode = 'buy';
     const PRICE_PER_DAY = 300;
     let pollInterval = null;
-
-    // Variabel penampung data untuk tombol copy cepat
     let activeAccountData = null;
+    let activeProtocol = 'ssh';
 
     function switchMode(mode) {
       currentMode = mode;
@@ -177,20 +189,22 @@
       document.getElementById('labelPrice').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 
-    // Parser Universal untuk SSH, VMess, VLess, dan Trojan
+    // Parser Universal Sesuai Format JSON Resmi Dinns
     function formatVpnOutput(res, protocol) {
       const item = (res && res.data) ? res.data : res;
+      activeAccountData = item;
+      activeProtocol = protocol;
 
       if (!item) {
         return typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res);
       }
 
-      // Simpan data mentah agar bisa di-copy per bagian
-      activeAccountData = item;
-
-      // Jika formatnya SSH (punya openSSH/dropbear/badVPN)
+      // ==========================================
+      // 1. FORMAT UNTUK SSH / OPENVPN
+      // ==========================================
       if (protocol === 'ssh' || item.ports?.openSSH) {
         document.getElementById('sshQuickCopy').classList.remove('hidden');
+        document.getElementById('xrayQuickCopy').classList.add('hidden');
 
         const p = item.ports || {};
         const f = item.formats || {};
@@ -234,37 +248,45 @@ LINK PENTING:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
       }
 
-      // Sembunyikan quick copy SSH jika protokolnya Xray
+      // ==========================================
+      // 2. FORMAT UNTUK VMESS / VLESS / TROJAN (XRAY)
+      // ==========================================
       document.getElementById('sshQuickCopy').classList.add('hidden');
+      document.getElementById('xrayQuickCopy').classList.remove('hidden');
 
-      const protoTitle = (protocol || 'XRAY').toUpperCase();
-      const uuidOrPass = item.uuid || item.password || item.id || '-';
-      const portTls = item.port_tls || item.ports?.tls || '443';
-      const portNtls = item.port_ntls || item.ports?.ntls || '80';
-      const pathWs = item.path || `/${protocol}`;
-      
-      const linkTls = item.link_tls || item.vmess_tls || item.vless_tls || item.trojan_tls || item.link || '-';
-      const linkNtls = item.link_ntls || item.vmess_ntls || item.vless_ntls || item.trojan_ntls || '-';
+      const user = item.user || item.username || '-';
+      const uuid = item.uuid || item.id || item.password || '-';
+      const domain = item.domain || item.host || 'id.dinns.my.id';
+      const exp = item.expired || '60 minutes';
+
+      // Ekstraksi Link Config
+      const wsTls = item.ws_tls || item.link_tls || item.vmess_tls || item.vless_tls || item.trojan_tls || '-';
+      const wsNoneTls = item.ws_none_tls || item.link_ntls || item.vmess_ntls || item.vless_ntls || item.trojan_ntls || '-';
+      const grpc = item.grpc || item.link_grpc || '-';
+      const openclash = item.openclash || '-';
+      const dashboard = item.dashboard_url || '-';
 
       return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     DETAIL AKUN ${protoTitle}
+     DETAIL AKUN ${protocol.toUpperCase()} (TRIAL)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Status        : Aktif
-Remarks/User  : ${item.username || item.remarks || '-'}
-Domain / Host : ${item.host || item.domain || 'id.dinns.my.id'}
-IP Server     : ${item.ip || '-'}
-UUID / Pass   : ${uuidOrPass}
-Port TLS      : ${portTls}
-Port Non-TLS  : ${portNtls}
-Network       : ${item.network || 'ws'}
-Path WS       : ${pathWs}
-Masa Aktif    : ${item.expired || '60 Minutes'}
+Username      : ${user}
+Domain        : ${domain}
+UUID          : ${uuid}
+Masa Aktif    : ${exp}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LINK CONFIG (TLS):
-${linkTls}
+LINK WS TLS (Port 443):
+${wsTls}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LINK CONFIG (NON-TLS):
-${linkNtls}
+LINK WS NON-TLS (Port 80):
+${wsNoneTls}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LINK gRPC (Port 443):
+${grpc}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LINK PENTING:
+• OpenClash   : ${openclash}
+• Dashboard   : ${dashboard}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
     }
 
@@ -275,40 +297,48 @@ ${linkNtls}
       btn.disabled = true;
 
       // ==========================================
-      // 1. EKSEKUSI TRIAL CLIENT-SIDE
+      // 1. EKSEKUSI TRIAL CLIENT-SIDE (ANTI-TIMEOUT)
       // ==========================================
       if (currentMode === 'trial') {
-        btn.innerText = 'Membuat akun di VPS...';
+        btn.innerText = `Membuat trial ${protocol.toUpperCase()}...`;
 
         const authKey = 'pl67k9xp37';
-        const targetUrl = `https://id.dinns.my.id/api/trial-${protocol}?auth=${authKey}`;
 
-        try {
-          const res = await fetch(targetUrl, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json'
+        // Variasi endpoint panel Dinns
+        const endpointsToTry = [
+          `https://id.dinns.my.id/api/trial-${protocol}?auth=${authKey}`,
+          `https://id.dinns.my.id/api/trial?type=${protocol}&auth=${authKey}`,
+          `https://id.dinns.my.id/api/${protocol}/trial?auth=${authKey}`
+        ];
+
+        let resultData = null;
+        let lastErr = null;
+
+        for (const url of endpointsToTry) {
+          try {
+            const res = await fetch(url, {
+              method: 'GET',
+              headers: { 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (data && (data.status === 'success' || data.data || data.uuid || data.ws_tls)) {
+              resultData = data;
+              break;
             }
-          });
-
-          const data = await res.json();
-
-          if (data && (data.status === 'success' || data.data)) {
-            document.getElementById('stepForm').classList.add('hidden');
-            document.getElementById('stepResult').classList.remove('hidden');
-            
-            const userLabel = data.data?.username || data.data?.remarks || protocol.toUpperCase();
-            document.getElementById('resultBanner').innerText = `⚡ Trial 60 Menit Aktif! (${userLabel})`;
-            
-            document.getElementById('outputResult').value = formatVpnOutput(data, protocol);
-          } else {
-            alert(data.message || 'Gagal membuat akun trial di VPS');
-            btn.disabled = false;
-            btn.innerText = '⚡ Ambil Trial 60 Menit Gratis';
+          } catch (e) {
+            lastErr = e;
           }
-        } catch (e) {
-          console.error(e);
-          alert('Gagal menghubungi VPS Dinns: ' + e.message);
+        }
+
+        if (resultData) {
+          document.getElementById('stepForm').classList.add('hidden');
+          document.getElementById('stepResult').classList.remove('hidden');
+
+          const userLabel = resultData.data?.user || resultData.data?.username || protocol.toUpperCase();
+          document.getElementById('resultBanner').innerText = `⚡ Trial 60 Menit Aktif! (${userLabel})`;
+          document.getElementById('outputResult').value = formatVpnOutput(resultData, protocol);
+        } else {
+          alert('Gagal membuat trial ' + protocol.toUpperCase() + ': ' + (lastErr?.message || 'Endpoint server tidak merespons'));
           btn.disabled = false;
           btn.innerText = '⚡ Ambil Trial 60 Menit Gratis';
         }
@@ -322,14 +352,8 @@ ${linkNtls}
       const password = document.getElementById('password').value.trim();
       const days = parseInt(document.getElementById('inputDays').value, 10);
 
-      if (!username) {
-        btn.disabled = false;
-        return alert('Username wajib diisi!');
-      }
-      if (!password) {
-        btn.disabled = false;
-        return alert('Password wajib diisi!');
-      }
+      if (!username) { btn.disabled = false; return alert('Username wajib diisi!'); }
+      if (!password) { btn.disabled = false; return alert('Password wajib diisi!'); }
 
       btn.innerText = 'Membuat tagihan QRIS...';
 
@@ -389,10 +413,10 @@ ${linkNtls}
       const el = document.getElementById('outputResult');
       el.select();
       navigator.clipboard.writeText(el.value);
-      alert('Semua info akun berhasil disalin!');
+      alert('Semua rincian akun berhasil disalin ke clipboard!');
     }
 
-    // Salin elemen SSH spesifik
+    // Salin elemen spesifik (Quick Copy)
     function copySpecific(type) {
       if (!activeAccountData) return alert('Data akun tidak tersedia');
 
@@ -400,6 +424,7 @@ ${linkNtls}
       const f = activeAccountData.formats || {};
       const pl = activeAccountData.payloads || {};
 
+      // 1. Pilihan SSH
       if (type === 'port80') {
         textToCopy = f.port80 || `${activeAccountData.host}:80@${activeAccountData.username}:${activeAccountData.password}`;
       } else if (type === 'port443') {
@@ -407,13 +432,22 @@ ${linkNtls}
       } else if (type === 'payload') {
         textToCopy = pl.enhanced || pl.wsTls || pl.wsNtls || '';
       }
+      
+      // 2. Pilihan Xray (VMess, VLess, Trojan)
+      else if (type === 'tls') {
+        textToCopy = activeAccountData.ws_tls || activeAccountData.link_tls || '';
+      } else if (type === 'ntls') {
+        textToCopy = activeAccountData.ws_none_tls || activeAccountData.link_ntls || '';
+      } else if (type === 'grpc') {
+        textToCopy = activeAccountData.grpc || activeAccountData.link_grpc || '';
+      }
 
-      if (!textToCopy) {
-        return alert('Data tidak ditemukan untuk disalin.');
+      if (!textToCopy || textToCopy === '-') {
+        return alert('Data link tersebut tidak tersedia.');
       }
 
       navigator.clipboard.writeText(textToCopy);
-      alert(`Berhasil disalin: ${textToCopy}`);
+      alert(`Berhasil disalin ke clipboard:\n${textToCopy}`);
     }
   </script>
 </body>
