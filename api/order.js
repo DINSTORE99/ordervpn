@@ -5,24 +5,31 @@ const memoryStore = global.orderStore || new Map();
 global.orderStore = memoryStore;
 
 // ==========================================
-// ⚙️ PENGATURAN BOT TELEGRAM & PAYMENT (DISIMPAN DI CODE GITHUB)
+// ⚙️ PENGATURAN BOT TELEGRAM & PAYMENT
 // ==========================================
-const TELEGRAM_BOT_TOKEN = '8528814257:AAGY1QCVRNAUZaNI8eKVGEScWIeJdqOB1fY';
-const TELEGRAM_CHAT_ID   = '6452266025';  
+const TELEGRAM_BOT_TOKEN = '8528814257:AAGY1QCVRNAUZaNI8eKVGEScWIeJdqOB1fY'; // Contoh: '7123456789:AAHxxxx...'
+const TELEGRAM_CHAT_ID   = '6452266025';   // Contoh: '987654321' (Hanya angka)
 
 const PAYMENT_API_KEY = '024fc4ce-36e5-43b4-8f16-283b4390427a';
-const PRICE_PER_DAY = 300; // Rp 9.000 / 30 hari
+const PRICE_PER_DAY = 300;
 
 async function sendTelegramNotification(text) {
-  if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) return;
+  if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) {
+    console.warn('Bot Token belum diisi dengan benar.');
+    return;
+  }
   try {
-    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      chat_id: TELEGRAM_CHAT_ID,
-      text: text,
-      parse_mode: 'Markdown'
-    }, { timeout: 4000 });
+    const res = await axios.post(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        chat_id: TELEGRAM_CHAT_ID,
+        text: text
+      },
+      { timeout: 5000 }
+    );
+    console.log('Telegram terkirim:', res.data?.ok);
   } catch (err) {
-    console.warn('Gagal kirim notif Telegram:', err.message);
+    console.error('Error pengiriman Telegram:', err.response?.data || err.message);
   }
 }
 
@@ -55,7 +62,6 @@ module.exports = async (req, res) => {
     let rawQris = '';
     let trxId = null;
 
-    // 1. Tembak gateway deposit QRIS
     try {
       const payUrl = `https://payment.mybotv1.workers.dev/api/deposit?apikey=${PAYMENT_API_KEY}&amount=${totalAmount}`;
       const payRes = await axios.get(payUrl, { timeout: 9000 });
@@ -93,19 +99,21 @@ module.exports = async (req, res) => {
 
     memoryStore.set(orderId, orderData);
 
-    // 2. Kirim Notifikasi Tagihan Dibuat ke Telegram
+    // Format pesan teks polos agar kebal terhadap error parser Markdown
     const notifText = 
-`🔔 *TAGIHAN BARU MASUK!*
+`🔔 TAGIHAN QRIS DIBUAT
 ━━━━━━━━━━━━━━━━━━━
-• *Invoice*   : \`${orderId}\`
-• *Username*  : \`${orderData.username}\`
-• *Password*  : \`${orderData.password}\`
-• *Layanan*   : \`${orderData.protocol.toUpperCase()}\`
-• *Durasi*    : ${orderData.days} Hari
-• *Total Bayar*: *Rp ${totalAmount.toLocaleString('id-ID')}*
-• *Status*    : ⏳ Menunggu Pembayaran
+Invoice    : ${orderId}
+Username   : ${orderData.username}
+Password   : ${orderData.password}
+Layanan    : ${orderData.protocol.toUpperCase()}
+Durasi     : ${orderData.days} Hari
+Total      : Rp ${totalAmount.toLocaleString('id-ID')}
+Status     : Menunggu Pembayaran
 ━━━━━━━━━━━━━━━━━━━`;
-    sendTelegramNotification(notifText);
+
+    // Kirim notifikasi
+    await sendTelegramNotification(notifText);
 
     return res.status(200).json({
       success: true,
