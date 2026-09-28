@@ -12,7 +12,7 @@
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
     .glass-card {
-      background: rgba(15, 23, 42, 0.75);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -24,7 +24,6 @@
 </head>
 <body class="bg-[#090d16] text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-x-hidden">
 
-  <!-- BACKGROUND GLOW EFFECTS -->
   <div class="absolute -top-32 -left-32 w-80 h-80 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none"></div>
   <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -39,56 +38,56 @@
       <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
         Auto VPN Store
       </h1>
-      <p class="text-xs text-slate-400 mt-1">Layanan VPN Premium, Tunneling & Trial 60 Menit</p>
+      <p class="text-xs text-slate-400 mt-1">Beli, Perpanjang (Renew) & Trial 60 Menit Instan</p>
     </div>
 
-    <!-- TABS -->
-    <div class="grid grid-cols-2 gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl mb-6 border border-slate-800">
-      <button id="tabBuy" onclick="switchMode('buy')" class="py-2.5 text-xs font-bold rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transition duration-200">
-        💳 Beli Akun (QRIS)
+    <!-- TABS (3 PILIHAN: BELI, RENEW, TRIAL) -->
+    <div class="grid grid-cols-3 gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl mb-6 border border-slate-800">
+      <button id="tabBuy" onclick="switchMode('buy')" class="py-2 text-[11px] font-bold rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow transition duration-200">
+        💳 Beli Baru
       </button>
-      <button id="tabTrial" onclick="switchMode('trial')" class="py-2.5 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition duration-200">
-        🎁 Trial 60 Menit
+      <button id="tabRenew" onclick="switchMode('renew')" class="py-2 text-[11px] font-semibold rounded-xl text-slate-400 hover:text-white transition duration-200">
+        🔄 Renew
+      </button>
+      <button id="tabTrial" onclick="switchMode('trial')" class="py-2 text-[11px] font-semibold rounded-xl text-slate-400 hover:text-white transition duration-200">
+        🎁 Trial
       </button>
     </div>
 
     <!-- STEP FORM -->
     <div id="stepForm" class="space-y-4">
       
-      <!-- INPUT KHUSUS ORDER -->
+      <!-- INPUT USERNAME & PASSWORD -->
       <div id="orderFields" class="space-y-3.5">
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Username Akun</label>
-          <div class="relative">
-            <input type="text" id="username" placeholder="Masukkan username pilihan..." class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
-          </div>
+          <label id="labelUsernameInput" class="block text-xs font-semibold text-slate-300 mb-1.5">Username Akun</label>
+          <input type="text" id="username" placeholder="Masukkan username..." class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
         </div>
-        <div>
+        
+        <div id="passwordWrapper">
           <label class="block text-xs font-semibold text-slate-300 mb-1.5">Password Akun</label>
-          <div class="relative">
-            <input type="text" id="password" placeholder="Masukkan password akun..." class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
-          </div>
+          <input type="text" id="password" placeholder="Masukkan password..." class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition">
         </div>
       </div>
 
-      <!-- PROTOCOL SELECTOR -->
+      <!-- PILIHAN PROTOKOL -->
       <div>
         <label class="block text-xs font-semibold text-slate-300 mb-1.5">Pilih Protokol</label>
         <div class="relative">
           <select id="protocol" class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition cursor-pointer appearance-none">
             <option value="ssh">⚡ SSH & OpenVPN Premium</option>
             <option value="vmess">🛡️ VMess WebSocket (V2Ray)</option>
-            <option value="vless">🚀 VLess WebSocket (Fastest)</option>
+            <option value="vless">🚀 VLess WebSocket</option>
             <option value="trojan">🔒 Trojan TCP / WebSocket</option>
           </select>
           <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 text-xs">▼</div>
         </div>
       </div>
 
-      <!-- BUY SLIDER SECTION -->
+      <!-- DURATION SLIDER SECTION -->
       <div id="buySection" class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 space-y-3.5">
         <div class="flex justify-between items-center">
-          <span class="text-xs font-semibold text-slate-300">Durasi Masa Aktif</span>
+          <span id="labelDurationTitle" class="text-xs font-semibold text-slate-300">Durasi Masa Aktif</span>
           <span id="labelDays" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">30 Hari</span>
         </div>
 
@@ -112,11 +111,10 @@
           <span>🎁</span> Akun Trial Instan 60 Menit
         </div>
         <p class="text-slate-400 text-[11px] leading-relaxed">
-          Sistem akan langsung mendaftarkan akun uji coba acak ke server VPS. Cukup klik tombol di bawah untuk membuat config.
+          Sistem akan langsung mendaftarkan akun uji coba acak ke server VPS Dinns.
         </p>
       </div>
 
-      <!-- SUBMIT BUTTON -->
       <button id="btnSubmit" onclick="handleSubmit()" class="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-600/20 active:scale-[0.98]">
         Lanjut ke Pembayaran QRIS
       </button>
@@ -124,21 +122,17 @@
 
     <!-- AREA SCAN QRIS -->
     <div id="stepQris" class="hidden text-center space-y-4">
-      
-      <!-- COUNTDOWN TIMER -->
       <div class="inline-flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 text-rose-400 px-3.5 py-1.5 rounded-full text-xs font-semibold">
         <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
         <span>Kedaluwarsa dalam:</span>
         <span id="timerText" class="font-mono text-sm font-bold text-rose-300">05:00</span>
       </div>
 
-      <!-- QR IMAGE CONTAINER -->
       <div class="relative inline-block my-2">
         <div class="bg-white p-3.5 rounded-2xl shadow-xl inline-block">
           <img id="qrisImg" src="" alt="Scan QRIS" class="w-56 h-56 mx-auto object-contain">
         </div>
         
-        <!-- EXPIRED OVERLAY -->
         <div id="expiredOverlay" class="hidden absolute inset-0 bg-slate-950/90 rounded-2xl flex flex-col items-center justify-center p-4 backdrop-blur-sm">
           <div class="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-400 mb-2">⚠️</div>
           <span class="text-sm font-bold text-white">QRIS Kedaluwarsa</span>
@@ -149,7 +143,6 @@
         </div>
       </div>
 
-      <!-- DOWNLOAD BUTTON -->
       <div>
         <button id="btnDownloadQris" onclick="downloadQrisImage()" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold border border-slate-700 transition">
           📥 Unduh Gambar QRIS
@@ -162,7 +155,7 @@
       </div>
 
       <p class="text-[11px] text-slate-400 leading-relaxed">
-        Gunakan mobile banking atau e-wallet (BCA, ShopeePay, Dana, GoPay, OVO). Akun otomatis tampil setelah verifikasi.
+        Scan via Mobile Banking atau E-Wallet (ShopeePay, BCA, Dana, GoPay, OVO). Akun otomatis terproses saat dana masuk.
       </p>
 
       <div class="space-y-2 pt-1">
@@ -178,15 +171,14 @@
     <!-- AREA DETAIL HASIL AKUN -->
     <div id="stepResult" class="hidden space-y-4">
       <div id="resultBanner" class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl text-center text-xs font-bold">
-        🎉 Akun VPN Berhasil Dibuat!
+        🎉 Akun Berhasil Diproses!
       </div>
 
       <div>
         <label class="block text-xs font-semibold mb-1.5 text-slate-400">Detail Konfigurasi Akun:</label>
-        <textarea id="outputResult" readonly rows="12" class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 font-mono text-xs text-emerald-400 focus:outline-none selection:bg-emerald-500/20"></textarea>
+        <textarea id="outputResult" readonly rows="12" class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
       </div>
 
-      <!-- QUICK COPY SSH -->
       <div id="sshQuickCopy" class="hidden grid grid-cols-2 gap-2 text-xs">
         <button onclick="copySpecific('port80')" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl text-slate-300 font-semibold border border-slate-700/60 transition">
           📋 Port 80
@@ -199,7 +191,6 @@
         </button>
       </div>
 
-      <!-- QUICK COPY XRAY -->
       <div id="xrayQuickCopy" class="hidden grid grid-cols-2 gap-2 text-xs">
         <button onclick="copySpecific('tls')" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl text-slate-300 font-semibold border border-slate-700/60 transition">
           🔒 WS TLS (443)
@@ -224,7 +215,7 @@
   </div>
 
   <script>
-    let currentMode = 'buy';
+    let currentMode = 'buy'; // 'buy' | 'renew' | 'trial'
     const PRICE_PER_DAY = 300;
     let pollInterval = null;
     let timerInterval = null;
@@ -236,23 +227,46 @@
     function switchMode(mode) {
       currentMode = mode;
       const tabBuy = document.getElementById('tabBuy');
+      const tabRenew = document.getElementById('tabRenew');
       const tabTrial = document.getElementById('tabTrial');
       const orderFields = document.getElementById('orderFields');
+      const passwordWrapper = document.getElementById('passwordWrapper');
       const buySection = document.getElementById('buySection');
       const trialSection = document.getElementById('trialSection');
       const btnSubmit = document.getElementById('btnSubmit');
+      const labelUsernameInput = document.getElementById('labelUsernameInput');
+      const labelDurationTitle = document.getElementById('labelDurationTitle');
+
+      // Reset style tabs
+      const unselectedTab = 'py-2 text-[11px] font-semibold rounded-xl text-slate-400 hover:text-white transition duration-200';
+      tabBuy.className = unselectedTab;
+      tabRenew.className = unselectedTab;
+      tabTrial.className = unselectedTab;
 
       if (mode === 'buy') {
-        tabBuy.className = 'py-2.5 text-xs font-bold rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transition duration-200';
-        tabTrial.className = 'py-2.5 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition duration-200';
+        tabBuy.className = 'py-2 text-[11px] font-bold rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow transition duration-200';
         orderFields.classList.remove('hidden');
+        passwordWrapper.classList.remove('hidden');
         buySection.classList.remove('hidden');
         trialSection.classList.add('hidden');
-        btnSubmit.innerText = 'Lanjut ke Pembayaran QRIS';
+        labelUsernameInput.innerText = 'Username Akun';
+        labelDurationTitle.innerText = 'Durasi Masa Aktif';
+        btnSubmit.innerText = 'Lanjut ke Pembayaran QRIS (Beli)';
         btnSubmit.className = 'w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-600/20 active:scale-[0.98]';
-      } else {
-        tabTrial.className = 'py-2.5 text-xs font-bold rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg transition duration-200';
-        tabBuy.className = 'py-2.5 text-xs font-semibold rounded-xl text-slate-400 hover:text-white transition duration-200';
+      } 
+      else if (mode === 'renew') {
+        tabRenew.className = 'py-2 text-[11px] font-bold rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow transition duration-200';
+        orderFields.classList.remove('hidden');
+        passwordWrapper.classList.add('hidden'); // Renew hanya butuh username & hari
+        buySection.classList.remove('hidden');
+        trialSection.classList.add('hidden');
+        labelUsernameInput.innerText = 'Username Akun Yang Akan Diperpanjang';
+        labelDurationTitle.innerText = 'Tambah Durasi Hari';
+        btnSubmit.innerText = 'Lanjut ke Pembayaran QRIS (Renew)';
+        btnSubmit.className = 'w-full bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-amber-600/20 active:scale-[0.98]';
+      } 
+      else {
+        tabTrial.className = 'py-2 text-[11px] font-bold rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow transition duration-200';
         orderFields.classList.add('hidden');
         buySection.classList.add('hidden');
         trialSection.classList.remove('hidden');
@@ -323,7 +337,7 @@
         return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
        DETAIL AKUN SSH / OVPN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Status        : Aktif
+Status        : Aktif / Sukses Diperpanjang
 Username      : ${item.username || '-'}
 Password      : ${item.password || '-'}
 Host / Domain : ${item.host || '-'}
@@ -364,7 +378,7 @@ LINK PENTING:
       const user = item.user || item.username || '-';
       const uuid = item.uuid || item.id || item.password || '-';
       const domain = item.domain || item.host || 'id.dinns.my.id';
-      const exp = item.expired || '60 minutes';
+      const exp = item.expired || 'Aktif';
 
       const wsTls = item.ws_tls || item.link_tls || item.vmess_tls || item.vless_tls || item.trojan_tls || '-';
       const wsNoneTls = item.ws_none_tls || item.link_ntls || item.vmess_ntls || item.vless_ntls || item.trojan_ntls || '-';
@@ -375,7 +389,7 @@ LINK PENTING:
       return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
      DETAIL AKUN ${protocol.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Status        : Aktif
+Status        : Aktif / Sukses Diperpanjang
 Username      : ${user}
 Domain        : ${domain}
 UUID          : ${uuid}
@@ -442,13 +456,19 @@ LINK PENTING:
         return;
       }
 
-      // 2. ORDER PEMBELIAN
+      // 2. ORDER PEMBELIAN BARU ATAU RENEW
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const days = parseInt(document.getElementById('inputDays').value, 10);
 
-      if (!username) { btn.disabled = false; return alert('Username wajib diisi!'); }
-      if (!password) { btn.disabled = false; return alert('Password wajib diisi!'); }
+      if (!username) { 
+        btn.disabled = false; 
+        return alert('Username wajib diisi!'); 
+      }
+      if (currentMode === 'buy' && !password) { 
+        btn.disabled = false; 
+        return alert('Password wajib diisi untuk beli baru!'); 
+      }
 
       btn.innerText = 'Menyiapkan QRIS...';
 
@@ -456,7 +476,13 @@ LINK PENTING:
         const res = await fetch('/api/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, protocol, days })
+          body: JSON.stringify({ 
+            username, 
+            password: password || 'renew_pass', 
+            protocol, 
+            days,
+            actionType: currentMode // 'buy' atau 'renew'
+          })
         });
 
         const data = await res.json();
@@ -482,12 +508,12 @@ LINK PENTING:
         } else {
           alert(data.error || 'Gagal membuat QRIS');
           btn.disabled = false;
-          btn.innerText = 'Lanjut ke Pembayaran QRIS';
+          btn.innerText = currentMode === 'renew' ? 'Lanjut ke Pembayaran QRIS (Renew)' : 'Lanjut ke Pembayaran QRIS';
         }
       } catch (err) {
         alert('Error: ' + err.message);
         btn.disabled = false;
-        btn.innerText = 'Lanjut ke Pembayaran QRIS';
+        btn.innerText = currentMode === 'renew' ? 'Lanjut ke Pembayaran QRIS (Renew)' : 'Lanjut ke Pembayaran QRIS';
       }
     }
 
@@ -505,8 +531,8 @@ LINK PENTING:
           document.getElementById('stepQris').classList.add('hidden');
           document.getElementById('stepResult').classList.remove('hidden');
 
-          const userLabel = data.credentials?.data?.username || data.credentials?.data?.user || 'Aktif';
-          document.getElementById('resultBanner').innerText = `🎉 Pembayaran Berhasil! Akun ${userLabel} Telah Dibuat`;
+          const userLabel = data.credentials?.data?.username || data.credentials?.data?.user || 'User';
+          document.getElementById('resultBanner').innerText = `🎉 Berhasil Diproses! Akun ${userLabel} Aktif`;
           document.getElementById('outputResult').value = formatVpnOutput(data.credentials, document.getElementById('protocol').value);
         } else if (!isSimulation) {
           alert('Pembayaran belum terdeteksi. Silakan selesaikan scan QRIS terlebih dahulu.');
@@ -525,7 +551,7 @@ LINK PENTING:
       const el = document.getElementById('outputResult');
       el.select();
       navigator.clipboard.writeText(el.value);
-      alert('Semua rincian akun berhasil disalin ke clipboard!');
+      alert('Semua rincian akun berhasil disalin!');
     }
 
     function copySpecific(type) {
