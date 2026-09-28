@@ -4,8 +4,27 @@ const QRCode = require('qrcode');
 const memoryStore = global.orderStore || new Map();
 global.orderStore = memoryStore;
 
-const PRICE_PER_DAY = 300; // Rp 9.000 / 30 hari
+// ==========================================
+// ⚙️ PENGATURAN BOT TELEGRAM & PAYMENT (DISIMPAN DI CODE GITHUB)
+// ==========================================
+const TELEGRAM_BOT_TOKEN = '8528814257:AAGY1QCVRNAUZaNI8eKVGEScWIeJdqOB1fY';
+const TELEGRAM_CHAT_ID   = '6452266025';  
+
 const PAYMENT_API_KEY = '024fc4ce-36e5-43b4-8f16-283b4390427a';
+const PRICE_PER_DAY = 300; // Rp 9.000 / 30 hari
+
+async function sendTelegramNotification(text) {
+  if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) return;
+  try {
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      chat_id: TELEGRAM_CHAT_ID,
+      text: text,
+      parse_mode: 'Markdown'
+    }, { timeout: 4000 });
+  } catch (err) {
+    console.warn('Gagal kirim notif Telegram:', err.message);
+  }
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,34 +55,29 @@ module.exports = async (req, res) => {
     let rawQris = '';
     let trxId = null;
 
-    // 1. Panggil API Payment Gateway (mybotv1)
+    // 1. Tembak gateway deposit QRIS
     try {
       const payUrl = `https://payment.mybotv1.workers.dev/api/deposit?apikey=${PAYMENT_API_KEY}&amount=${totalAmount}`;
-      const payRes = await axios.get(payUrl, { timeout: 10000 });
+      const payRes = await axios.get(payUrl, { timeout: 9000 });
       const payData = payRes.data;
 
-      // Ambil string QRIS atau QR image dari response gateway
       rawQris = payData.qr_string || payData.qris || payData.qr || payData.data?.qr_string || payData.data?.qris;
       trxId = payData.trx_id || payData.id || payData.data?.trx_id || orderId;
 
       if (rawQris) {
-        // Jika gateway merespon string QRIS, buat gambarnya dengan QRCode
-        qrImage = await QRCode.toDataURL(rawQris, { width: 320, margin: 2 });
+        qrImage = await QRCode.toDataURL(rawQris, { width: 350, margin: 2 });
       } else if (payData.qr_url || payData.qr_image || payData.data?.qr_url) {
-        // Jika gateway sudah memberikan URL gambar langsung
         qrImage = payData.qr_url || payData.qr_image || payData.data?.qr_url;
       }
     } catch (apiErr) {
-      console.warn('Gateway error, fallback ke QR generator:', apiErr.response?.data || apiErr.message);
+      console.warn('Gateway worker error, memakai string cadangan');
     }
 
-    // Fallback jika response gateway sedang pending / token shopee belum diatur
     if (!qrImage) {
       const fallbackPayload = `00020101021226540014ID.CO.QRIS.WWW0118936009990000000001520458125303360540${totalAmount}5802ID5911DINNS STORE6007JAKARTA6304ABCD`;
-      qrImage = await QRCode.toDataURL(fallbackPayload, { width: 320, margin: 2 });
+      qrImage = await QRCode.toDataURL(fallbackPayload, { width: 350, margin: 2 });
     }
 
-    // 2. Simpan Transaksi di Memory Store
     const orderData = {
       orderId,
       trxId,
@@ -79,6 +93,20 @@ module.exports = async (req, res) => {
 
     memoryStore.set(orderId, orderData);
 
+    // 2. Kirim Notifikasi Tagihan Dibuat ke Telegram
+    const notifText = 
+`🔔 *TAGIHAN BARU MASUK!*
+━━━━━━━━━━━━━━━━━━━
+• *Invoice*   : \`${orderId}\`
+• *Username*  : \`${orderData.username}\`
+• *Password*  : \`${orderData.password}\`
+• *Layanan*   : \`${orderData.protocol.toUpperCase()}\`
+• *Durasi*    : ${orderData.days} Hari
+• *Total Bayar*: *Rp ${totalAmount.toLocaleString('id-ID')}*
+• *Status*    : ⏳ Menunggu Pembayaran
+━━━━━━━━━━━━━━━━━━━`;
+    sendTelegramNotification(notifText);
+
     return res.status(200).json({
       success: true,
       orderId,
@@ -88,7 +116,6 @@ module.exports = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Order Error:', err);
-    return res.status(500).json({ error: 'Gagal membuat tagihan QRIS: ' + err.message });
+    return res.status(500).json({ error: 'Gagal membuat tagihan: ' + err.message });
   }
 };
