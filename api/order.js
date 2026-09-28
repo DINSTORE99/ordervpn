@@ -5,32 +5,24 @@ const memoryStore = global.orderStore || new Map();
 global.orderStore = memoryStore;
 
 // ==========================================
-// ⚙️ PENGATURAN BOT TELEGRAM & PAYMENT
+// ⚙️ KONFIGURASI BOT TELEGRAM & DINNS
 // ==========================================
-const TELEGRAM_BOT_TOKEN = '8528814257:AAGY1QCVRNAUZaNI8eKVGEScWIeJdqOB1fY'; // Contoh: '7123456789:AAHxxxx...'
-const TELEGRAM_CHAT_ID   = '6452266025';   // Contoh: '987654321' (Hanya angka)
+const TELEGRAM_BOT_TOKEN = 'MASUKKAN_BOT_TOKEN_DISINI';
+const TELEGRAM_CHAT_ID   = 'MASUKKAN_CHAT_ID_DISINI';
 
 const PAYMENT_API_KEY = '024fc4ce-36e5-43b4-8f16-283b4390427a';
-const PRICE_PER_DAY = 300;
+const DINNS_AUTH_KEY  = 'pl67k9xp37';
+const PRICE_PER_DAY   = 300;
 
 async function sendTelegramNotification(text) {
-  if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) {
-    console.warn('Bot Token belum diisi dengan benar.');
-    return;
-  }
+  if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) return;
   try {
-    const res = await axios.post(
+    await axios.post(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-      {
-        chat_id: TELEGRAM_CHAT_ID,
-        text: text
-      },
-      { timeout: 5000 }
+      { chat_id: TELEGRAM_CHAT_ID, text: text },
+      { timeout: 4000 }
     );
-    console.log('Telegram terkirim:', res.data?.ok);
-  } catch (err) {
-    console.error('Error pengiriman Telegram:', err.response?.data || err.message);
-  }
+  } catch (err) {}
 }
 
 module.exports = async (req, res) => {
@@ -42,18 +34,65 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   try {
-    let { username, password, protocol, days } = req.body || {};
+    let { username, password, protocol, days, actionType } = req.body || {};
 
     if (!username || !username.trim()) {
       return res.status(400).json({ error: 'Username wajib diisi!' });
-    }
-    if (!password || !password.trim()) {
-      return res.status(400).json({ error: 'Password wajib diisi!' });
     }
 
     days = parseInt(days, 10);
     if (isNaN(days) || days < 1) days = 1;
     if (days > 30) days = 30;
+
+    const isRenew = actionType === 'renew';
+    const proto = protocol || 'ssh';
+
+    // ==============================================================
+    // 🔍 PENGECEKAN KHUSUS RENEW: VALIDASI KE SERVER DINNS
+    // ==============================================================
+    if (isRenew) {
+      const renewEndpoints = {
+        ssh: 'rensh',
+        vmess: 'renws',
+        vless: 'renvl',
+        trojan: 'rentr'
+      };
+      const endpoint = renewEndpoints[proto] || 'rensh';
+      const checkUrl = `https://id.dinns.my.id/api/${endpoint}?auth=${DINNS_AUTH_KEY}&user=${username.trim()}&exp=0`;
+
+      try {
+        const testRes = await axios.get(checkUrl, { timeout: 7000 });
+        const resData = testRes.data;
+
+        // Cek jika server mengembalikan tanda gagal / tidak terdaftar
+        const isNotFound = 
+          (resData && resData.status === 'failed') ||
+          (resData && resData.status === 'error') ||
+          (typeof resData?.message === 'string' && (
+            resData.message.toLowerCase().includes('not found') ||
+            resData.message.toLowerCase().includes('tidak ditemukan') ||
+            resData.message.toLowerCase().includes('tidak terdaftar') ||
+            resData.message.toLowerCase().includes('not exist')
+          ));
+
+        if (isNotFound) {
+          return res.status(400).json({
+            error: `Akun "${username}" tidak terdaftar di server Dinns! Pastikan username dan protokol benar.`
+          });
+        }
+      } catch (err) {
+        const errMsg = err.response?.data?.message || err.response?.data?.error || '';
+        if (
+          err.response?.status === 404 || 
+          errMsg.toLowerCase().includes('not found') || 
+          errMsg.toLowerCase().includes('tidak')
+        ) {
+          return res.status(400).json({
+            error: `Akun "${username}" tidak terdaftar di server Dinns!`
+          });
+        }
+      }
+    }
 
     const totalAmount = days * PRICE_PER_DAY;
     const orderId = `INV-${Date.now()}`;
@@ -76,7 +115,7 @@ module.exports = async (req, res) => {
         qrImage = payData.qr_url || payData.qr_image || payData.data?.qr_url;
       }
     } catch (apiErr) {
-      console.warn('Gateway worker error, memakai string cadangan');
+      console.warn('Gateway worker error, memakai cadangan');
     }
 
     if (!qrImage) {
@@ -88,10 +127,11 @@ module.exports = async (req, res) => {
       orderId,
       trxId,
       username: username.trim(),
-      password: password.trim(),
-      protocol: protocol || 'ssh',
+      password: (password || '').trim(),
+      protocol: proto,
       days,
       amount: totalAmount,
+      actionType: isRenew ? 'renew' : 'buy',
       status: 'UNPAID',
       credentials: null,
       createdAt: Date.now()
@@ -99,21 +139,18 @@ module.exports = async (req, res) => {
 
     memoryStore.set(orderId, orderData);
 
-    // Format pesan teks polos agar kebal terhadap error parser Markdown
     const notifText = 
 `🔔 TAGIHAN QRIS DIBUAT
 ━━━━━━━━━━━━━━━━━━━
+Jenis      : ${isRenew ? '🔄 PERPANJANG (RENEW)' : '💳 BELI BARU'}
 Invoice    : ${orderId}
 Username   : ${orderData.username}
-Password   : ${orderData.password}
 Layanan    : ${orderData.protocol.toUpperCase()}
 Durasi     : ${orderData.days} Hari
 Total      : Rp ${totalAmount.toLocaleString('id-ID')}
 Status     : Menunggu Pembayaran
 ━━━━━━━━━━━━━━━━━━━`;
-
-    // Kirim notifikasi
-    await sendTelegramNotification(notifText);
+    sendTelegramNotification(notifText);
 
     return res.status(200).json({
       success: true,
