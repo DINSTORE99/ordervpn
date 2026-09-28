@@ -24,6 +24,7 @@
 </head>
 <body class="bg-[#090d16] text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-x-hidden">
 
+  <!-- BACKGROUND GLOW EFFECTS -->
   <div class="absolute -top-32 -left-32 w-80 h-80 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none"></div>
   <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -111,7 +112,7 @@
           <span>🎁</span> Akun Trial Instan 60 Menit
         </div>
         <p class="text-slate-400 text-[11px] leading-relaxed">
-          Sistem akan langsung mendaftarkan akun uji coba acak ke server VPS Dinns.
+          Sistem akan langsung mendaftarkan akun uji coba acak ke server VPS Dinns. Cukup klik tombol di bawah untuk mendapatkan akun.
         </p>
       </div>
 
@@ -122,17 +123,21 @@
 
     <!-- AREA SCAN QRIS -->
     <div id="stepQris" class="hidden text-center space-y-4">
+      
+      <!-- COUNTDOWN TIMER 5 MENIT -->
       <div class="inline-flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 text-rose-400 px-3.5 py-1.5 rounded-full text-xs font-semibold">
         <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
         <span>Kedaluwarsa dalam:</span>
         <span id="timerText" class="font-mono text-sm font-bold text-rose-300">05:00</span>
       </div>
 
+      <!-- QR IMAGE CONTAINER -->
       <div class="relative inline-block my-2">
         <div class="bg-white p-3.5 rounded-2xl shadow-xl inline-block">
           <img id="qrisImg" src="" alt="Scan QRIS" class="w-56 h-56 mx-auto object-contain">
         </div>
         
+        <!-- EXPIRED OVERLAY -->
         <div id="expiredOverlay" class="hidden absolute inset-0 bg-slate-950/90 rounded-2xl flex flex-col items-center justify-center p-4 backdrop-blur-sm">
           <div class="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-400 mb-2">⚠️</div>
           <span class="text-sm font-bold text-white">QRIS Kedaluwarsa</span>
@@ -143,6 +148,7 @@
         </div>
       </div>
 
+      <!-- TOMBOL UNDUH GAMBAR QRIS -->
       <div>
         <button id="btnDownloadQris" onclick="downloadQrisImage()" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold border border-slate-700 transition">
           📥 Unduh Gambar QRIS
@@ -179,6 +185,7 @@
         <textarea id="outputResult" readonly rows="12" class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
       </div>
 
+      <!-- QUICK COPY SSH -->
       <div id="sshQuickCopy" class="hidden grid grid-cols-2 gap-2 text-xs">
         <button onclick="copySpecific('port80')" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl text-slate-300 font-semibold border border-slate-700/60 transition">
           📋 Port 80
@@ -191,6 +198,7 @@
         </button>
       </div>
 
+      <!-- QUICK COPY XRAY -->
       <div id="xrayQuickCopy" class="hidden grid grid-cols-2 gap-2 text-xs">
         <button onclick="copySpecific('tls')" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl text-slate-300 font-semibold border border-slate-700/60 transition">
           🔒 WS TLS (443)
@@ -237,7 +245,6 @@
       const labelUsernameInput = document.getElementById('labelUsernameInput');
       const labelDurationTitle = document.getElementById('labelDurationTitle');
 
-      // Reset style tabs
       const unselectedTab = 'py-2 text-[11px] font-semibold rounded-xl text-slate-400 hover:text-white transition duration-200';
       tabBuy.className = unselectedTab;
       tabRenew.className = unselectedTab;
@@ -257,7 +264,7 @@
       else if (mode === 'renew') {
         tabRenew.className = 'py-2 text-[11px] font-bold rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow transition duration-200';
         orderFields.classList.remove('hidden');
-        passwordWrapper.classList.add('hidden'); // Renew hanya butuh username & hari
+        passwordWrapper.classList.add('hidden'); // Sembunyikan kolom password saat renew
         buySection.classList.remove('hidden');
         trialSection.classList.add('hidden');
         labelUsernameInput.innerText = 'Username Akun Yang Akan Diperpanjang';
@@ -337,7 +344,7 @@
         return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
        DETAIL AKUN SSH / OVPN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Status        : Aktif / Sukses Diperpanjang
+Status        : Aktif / Sukses Diproses
 Username      : ${item.username || '-'}
 Password      : ${item.password || '-'}
 Host / Domain : ${item.host || '-'}
@@ -389,7 +396,7 @@ LINK PENTING:
       return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
      DETAIL AKUN ${protocol.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Status        : Aktif / Sukses Diperpanjang
+Status        : Aktif / Sukses Diproses
 Username      : ${user}
 Domain        : ${domain}
 UUID          : ${uuid}
@@ -416,7 +423,9 @@ LINK PENTING:
 
       btn.disabled = true;
 
-      // 1. TRIAL CLIENT-SIDE
+      // ==========================================
+      // 1. EKSEKUSI TRIAL CLIENT-SIDE
+      // ==========================================
       if (currentMode === 'trial') {
         btn.innerText = `Membuat trial ${protocol.toUpperCase()}...`;
 
@@ -456,7 +465,9 @@ LINK PENTING:
         return;
       }
 
-      // 2. ORDER PEMBELIAN BARU ATAU RENEW
+      // ==========================================
+      // 2. VALIDASI INPUT USERNAME & PASSWORD
+      // ==========================================
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const days = parseInt(document.getElementById('inputDays').value, 10);
@@ -467,9 +478,58 @@ LINK PENTING:
       }
       if (currentMode === 'buy' && !password) { 
         btn.disabled = false; 
-        return alert('Password wajib diisi untuk beli baru!'); 
+        return alert('Password wajib diisi untuk pembelian akun baru!'); 
       }
 
+      // ==============================================================
+      // 🔍 3. PENGECEKAN RENEW: CEK APAKAH AKUN TERDAFTAR DI SERVER DINNS
+      // ==============================================================
+      if (currentMode === 'renew') {
+        btn.innerText = 'Memeriksa ketersediaan akun...';
+
+        const renewEndpoints = {
+          ssh: 'rensh',
+          vmess: 'renws',
+          vless: 'renvl',
+          trojan: 'rentr'
+        };
+        const endpoint = renewEndpoints[protocol] || 'rensh';
+        const authKey = 'pl67k9xp37';
+        
+        // Pengecekan langsung ke server Dinns
+        const checkUrl = `https://id.dinns.my.id/api/${endpoint}?auth=${authKey}&user=${encodeURIComponent(username)}&exp=0`;
+
+        try {
+          const checkRes = await fetch(checkUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+          });
+          const checkData = await checkRes.json();
+
+          const errMsg = String(checkData.message || checkData.error || '').toLowerCase();
+          const isNotFound = 
+            checkData.status === 'failed' || 
+            checkData.status === 'error' ||
+            errMsg.includes('not found') ||
+            errMsg.includes('tidak ditemukan') ||
+            errMsg.includes('tidak terdaftar') ||
+            errMsg.includes('not exist') ||
+            errMsg.includes('invalid');
+
+          if (isNotFound) {
+            alert(`⚠️ Akun "${username}" TIDAK TERDAFTAR di server Dinns!\n\nPastikan username dan protokol (${protocol.toUpperCase()}) sudah sesuai.`);
+            btn.disabled = false;
+            btn.innerText = 'Lanjut ke Pembayaran QRIS (Renew)';
+            return; // Berhenti, QRIS tidak dibuat
+          }
+        } catch (netErr) {
+          console.warn('Gagal cek langsung dari browser, melanjutkan validasi backend...', netErr);
+        }
+      }
+
+      // ==============================================================
+      // 💳 4. JIKA AKUN ADA (ATAU MODE BELI), BUAT TAGIHAN QRIS
+      // ==============================================================
       btn.innerText = 'Menyiapkan QRIS...';
 
       try {
@@ -481,7 +541,7 @@ LINK PENTING:
             password: password || 'renew_pass', 
             protocol, 
             days,
-            actionType: currentMode // 'buy' atau 'renew'
+            actionType: currentMode 
           })
         });
 
@@ -503,10 +563,10 @@ LINK PENTING:
           document.getElementById('btnCheckPay').disabled = false;
           document.getElementById('btnCheckPay').classList.remove('opacity-50', 'cursor-not-allowed');
 
-          startCountdown(300);
+          startCountdown(300); // 5 Menit
           startPolling(data.orderId, protocol);
         } else {
-          alert(data.error || 'Gagal membuat QRIS');
+          alert(data.error || 'Gagal memproses transaksi. Akun tidak ditemukan.');
           btn.disabled = false;
           btn.innerText = currentMode === 'renew' ? 'Lanjut ke Pembayaran QRIS (Renew)' : 'Lanjut ke Pembayaran QRIS';
         }
@@ -551,7 +611,7 @@ LINK PENTING:
       const el = document.getElementById('outputResult');
       el.select();
       navigator.clipboard.writeText(el.value);
-      alert('Semua rincian akun berhasil disalin!');
+      alert('Semua rincian akun berhasil disalin ke clipboard!');
     }
 
     function copySpecific(type) {
