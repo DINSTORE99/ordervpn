@@ -24,7 +24,7 @@
 </head>
 <body class="bg-[#090d16] text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-x-hidden">
 
-  <!-- BACKGROUND GLOW EFFECTS -->
+  <!-- BACKGROUND GLOW -->
   <div class="absolute -top-32 -left-32 w-80 h-80 bg-blue-600/20 rounded-full blur-[100px] pointer-events-none"></div>
   <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -42,7 +42,7 @@
       <p class="text-xs text-slate-400 mt-1">Beli, Perpanjang (Renew) & Trial 60 Menit Instan</p>
     </div>
 
-    <!-- TABS (3 PILIHAN: BELI, RENEW, TRIAL) -->
+    <!-- TABS -->
     <div class="grid grid-cols-3 gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl mb-6 border border-slate-800">
       <button id="tabBuy" onclick="switchMode('buy')" class="py-2 text-[11px] font-bold rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow transition duration-200">
         💳 Beli Baru
@@ -85,7 +85,7 @@
         </div>
       </div>
 
-      <!-- DURATION SLIDER SECTION -->
+      <!-- SLIDER DURASI -->
       <div id="buySection" class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 space-y-3.5">
         <div class="flex justify-between items-center">
           <span id="labelDurationTitle" class="text-xs font-semibold text-slate-300">Durasi Masa Aktif</span>
@@ -106,13 +106,13 @@
         </div>
       </div>
 
-      <!-- TRIAL INFO BOX -->
+      <!-- INFO BOX TRIAL -->
       <div id="trialSection" class="hidden bg-emerald-500/5 p-4 rounded-2xl border border-emerald-500/20 text-emerald-300 text-xs space-y-1.5">
         <div class="font-bold flex items-center gap-1.5 text-emerald-400">
           <span>🎁</span> Akun Trial Instan 60 Menit
         </div>
         <p class="text-slate-400 text-[11px] leading-relaxed">
-          Sistem akan langsung mendaftarkan akun uji coba acak ke server VPS Dinns. Cukup klik tombol di bawah untuk mendapatkan akun.
+          Sistem akan langsung mendaftarkan akun uji coba acak ke server VPS Dinns.
         </p>
       </div>
 
@@ -123,21 +123,17 @@
 
     <!-- AREA SCAN QRIS -->
     <div id="stepQris" class="hidden text-center space-y-4">
-      
-      <!-- COUNTDOWN TIMER 5 MENIT -->
       <div class="inline-flex items-center gap-2 bg-rose-500/10 border border-rose-500/20 text-rose-400 px-3.5 py-1.5 rounded-full text-xs font-semibold">
         <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
         <span>Kedaluwarsa dalam:</span>
         <span id="timerText" class="font-mono text-sm font-bold text-rose-300">05:00</span>
       </div>
 
-      <!-- QR IMAGE CONTAINER -->
       <div class="relative inline-block my-2">
         <div class="bg-white p-3.5 rounded-2xl shadow-xl inline-block">
           <img id="qrisImg" src="" alt="Scan QRIS" class="w-56 h-56 mx-auto object-contain">
         </div>
         
-        <!-- EXPIRED OVERLAY -->
         <div id="expiredOverlay" class="hidden absolute inset-0 bg-slate-950/90 rounded-2xl flex flex-col items-center justify-center p-4 backdrop-blur-sm">
           <div class="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-400 mb-2">⚠️</div>
           <span class="text-sm font-bold text-white">QRIS Kedaluwarsa</span>
@@ -148,7 +144,6 @@
         </div>
       </div>
 
-      <!-- TOMBOL UNDUH GAMBAR QRIS -->
       <div>
         <button id="btnDownloadQris" onclick="downloadQrisImage()" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold border border-slate-700 transition">
           📥 Unduh Gambar QRIS
@@ -156,7 +151,7 @@
       </div>
 
       <div class="bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800">
-        <div class="text-[11px] text-slate-400">Total yang harus dibayar (<span id="summaryDays" class="text-slate-300">30 Hari</span>):</div>
+        <div class="text-[11px] text-slate-400">Total Tagihan (<span id="summaryDays" class="text-slate-300">30 Hari</span>):</div>
         <div id="summaryPrice" class="text-2xl font-black text-emerald-400 mt-0.5">Rp 0</div>
       </div>
 
@@ -223,7 +218,7 @@
   </div>
 
   <script>
-    let currentMode = 'buy'; // 'buy' | 'renew' | 'trial'
+    let currentMode = 'buy';
     const PRICE_PER_DAY = 300;
     let pollInterval = null;
     let timerInterval = null;
@@ -264,7 +259,7 @@
       else if (mode === 'renew') {
         tabRenew.className = 'py-2 text-[11px] font-bold rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow transition duration-200';
         orderFields.classList.remove('hidden');
-        passwordWrapper.classList.add('hidden'); // Sembunyikan kolom password saat renew
+        passwordWrapper.classList.add('hidden');
         buySection.classList.remove('hidden');
         trialSection.classList.add('hidden');
         labelUsernameInput.innerText = 'Username Akun Yang Akan Diperpanjang';
@@ -326,6 +321,7 @@
       }, 1000);
     }
 
+    // Parser Cerdas: Mendukung Response Renew & Akun Baru
     function formatVpnOutput(res, protocol) {
       const item = (res && res.data) ? res.data : res;
       activeAccountData = item;
@@ -333,6 +329,27 @@
 
       if (!item) return typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res);
 
+      // JIKA HASIL DARI RENEW
+      if (item.previous_expiry || item.days_added) {
+        document.getElementById('sshQuickCopy').classList.add('hidden');
+        document.getElementById('xrayQuickCopy').classList.add('hidden');
+
+        return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     STATUS PERPANJANGAN AKUN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status          : Berhasil Diperpanjang ✅
+Username        : ${item.username || '-'}
+Layanan         : ${protocol.toUpperCase()}
+Masa Aktif Lama : ${item.previous_expiry || '-'}
+Tambahan Durasi : +${item.days_added || '0'} Hari
+Masa Aktif Baru : ${item.expired || '-'}
+Main Updated    : ${item.main_updated ? 'Ya' : 'Tidak'}
+gRPC Updated    : ${item.grpc_updated ? 'Ya' : 'Tidak'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Catatan: Akun VPN Anda langsung aktif kembali dengan konfigurasi akun sebelumnya.`;
+      }
+
+      // JIKA HASIL DARI AKUN BARU SSH
       if (protocol === 'ssh' || item.ports?.openSSH) {
         document.getElementById('sshQuickCopy').classList.remove('hidden');
         document.getElementById('xrayQuickCopy').classList.add('hidden');
@@ -344,7 +361,7 @@
         return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
        DETAIL AKUN SSH / OVPN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Status        : Aktif / Sukses Diproses
+Status        : Aktif
 Username      : ${item.username || '-'}
 Password      : ${item.password || '-'}
 Host / Domain : ${item.host || '-'}
@@ -379,6 +396,7 @@ LINK PENTING:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
       }
 
+      // JIKA HASIL DARI AKUN BARU XRAY (VMESS / VLESS / TROJAN)
       document.getElementById('sshQuickCopy').classList.add('hidden');
       document.getElementById('xrayQuickCopy').classList.remove('hidden');
 
@@ -396,7 +414,7 @@ LINK PENTING:
       return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
      DETAIL AKUN ${protocol.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Status        : Aktif / Sukses Diproses
+Status        : Aktif
 Username      : ${user}
 Domain        : ${domain}
 UUID          : ${uuid}
@@ -423,9 +441,7 @@ LINK PENTING:
 
       btn.disabled = true;
 
-      // ==========================================
-      // 1. EKSEKUSI TRIAL CLIENT-SIDE
-      // ==========================================
+      // 1. TRIAL CLIENT-SIDE
       if (currentMode === 'trial') {
         btn.innerText = `Membuat trial ${protocol.toUpperCase()}...`;
 
@@ -465,9 +481,7 @@ LINK PENTING:
         return;
       }
 
-      // ==========================================
       // 2. VALIDASI INPUT USERNAME & PASSWORD
-      // ==========================================
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
       const days = parseInt(document.getElementById('inputDays').value, 10);
@@ -481,11 +495,9 @@ LINK PENTING:
         return alert('Password wajib diisi untuk pembelian akun baru!'); 
       }
 
-      // ==============================================================
-      // 🔍 3. PENGECEKAN RENEW: CEK APAKAH AKUN TERDAFTAR DI SERVER DINNS
-      // ==============================================================
+      // 3. PENGECEKAN KHUSUS RENEW: CEK KE DINNS SEBELUM BUAT QRIS
       if (currentMode === 'renew') {
-        btn.innerText = 'Memeriksa ketersediaan akun...';
+        btn.innerText = 'Memeriksa username di server VPS...';
 
         const renewEndpoints = {
           ssh: 'rensh',
@@ -496,8 +508,8 @@ LINK PENTING:
         const endpoint = renewEndpoints[protocol] || 'rensh';
         const authKey = 'pl67k9xp37';
         
-        // Pengecekan langsung ke server Dinns
-        const checkUrl = `https://id.dinns.my.id/api/${endpoint}?auth=${authKey}&user=${encodeURIComponent(username)}&exp=0`;
+        // Pengecekan ke endpoint Dinns
+        const checkUrl = `https://id.dinns.my.id/api/${endpoint}?auth=${authKey}&num=${encodeURIComponent(username)}&exp=0`;
 
         try {
           const checkRes = await fetch(checkUrl, {
@@ -506,30 +518,27 @@ LINK PENTING:
           });
           const checkData = await checkRes.json();
 
+          // Sesuai respon resmi Dinns: {"status": "failed", "message": "User ... expiration not found..."}
           const errMsg = String(checkData.message || checkData.error || '').toLowerCase();
-          const isNotFound = 
+          const isFailed = 
             checkData.status === 'failed' || 
             checkData.status === 'error' ||
             errMsg.includes('not found') ||
-            errMsg.includes('tidak ditemukan') ||
-            errMsg.includes('tidak terdaftar') ||
-            errMsg.includes('not exist') ||
-            errMsg.includes('invalid');
+            errMsg.includes('tidak') ||
+            errMsg.includes('pattern ###');
 
-          if (isNotFound) {
-            alert(`⚠️ Akun "${username}" TIDAK TERDAFTAR di server Dinns!\n\nPastikan username dan protokol (${protocol.toUpperCase()}) sudah sesuai.`);
+          if (isFailed) {
+            alert(`⚠️ Akun "${username}" TIDAK TERDAFTAR di server Dinns!\n\nPastikan nama akun dan protokol (${protocol.toUpperCase()}) yang Anda masukkan sudah benar.`);
             btn.disabled = false;
             btn.innerText = 'Lanjut ke Pembayaran QRIS (Renew)';
-            return; // Berhenti, QRIS tidak dibuat
+            return; // Hentikan proses, QRIS tidak dibuat
           }
         } catch (netErr) {
-          console.warn('Gagal cek langsung dari browser, melanjutkan validasi backend...', netErr);
+          console.warn('Gagal cek langsung dari browser, validasi diteruskan ke backend...', netErr);
         }
       }
 
-      // ==============================================================
-      // 💳 4. JIKA AKUN ADA (ATAU MODE BELI), BUAT TAGIHAN QRIS
-      // ==============================================================
+      // 4. JIKA AKUN ADA (ATAU MODE BELI), BUAT TAGIHAN QRIS
       btn.innerText = 'Menyiapkan QRIS...';
 
       try {
@@ -563,10 +572,10 @@ LINK PENTING:
           document.getElementById('btnCheckPay').disabled = false;
           document.getElementById('btnCheckPay').classList.remove('opacity-50', 'cursor-not-allowed');
 
-          startCountdown(300); // 5 Menit
+          startCountdown(300);
           startPolling(data.orderId, protocol);
         } else {
-          alert(data.error || 'Gagal memproses transaksi. Akun tidak ditemukan.');
+          alert(data.error || 'Akun tidak terdaftar di server Dinns!');
           btn.disabled = false;
           btn.innerText = currentMode === 'renew' ? 'Lanjut ke Pembayaran QRIS (Renew)' : 'Lanjut ke Pembayaran QRIS';
         }
