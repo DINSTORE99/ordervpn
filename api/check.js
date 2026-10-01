@@ -8,8 +8,7 @@ global.orderStore = memoryStore;
 // ==========================================
 const TELEGRAM_BOT_TOKEN = 'MASUKKAN_BOT_TOKEN_DISINI';
 const TELEGRAM_CHAT_ID   = 'MASUKKAN_CHAT_ID_DISINI';
-
-const DINNS_AUTH_KEY  = 'pl67k9xp37';
+const DINNS_AUTH_KEY     = 'pl67k9xp37';
 
 async function sendTelegramNotification(text) {
   if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) return;
@@ -31,12 +30,11 @@ module.exports = async (req, res) => {
   const order = memoryStore.get(orderId);
   if (!order) return res.status(404).json({ error: 'Pesanan tidak ditemukan' });
 
-  // Mode Simulasi untuk Testing
   if (simulate_pay === 'true') {
     order.status = 'PAID';
   }
 
-  // 1. CEK STATUS PEMBAYARAN KE DINNPAY VIA POST /api/qris/status
+  // 1. CEK STATUS KE DINNPAY
   if (order.status !== 'PAID' && order.transactionId) {
     try {
       const statusRes = await axios.post('https://dinnpay.vercel.app/api/qris/status', {
@@ -57,10 +55,11 @@ module.exports = async (req, res) => {
     }
   }
 
-  // 2. EKSEKUSI KE VPS DINNS KETIKA SUDAH LUNAS (PAID)
+  // 2. EKSEKUSI PEMBUATAN / RENEW AKUN DI VPS DINNS SAAT LUNAS
   if (order.status === 'PAID' && !order.credentials) {
     try {
       const proto = order.protocol || 'ssh';
+      const ipParam = order.iplimit || 1;
       let dinnsUrl = '';
       let createdData = null;
 
@@ -72,9 +71,9 @@ module.exports = async (req, res) => {
           trojan: 'rentr'
         };
         const renewAction = renewEndpoints[proto] || 'rensh';
-        dinnsUrl = `https://id.dinns.my.id/api/${renewAction}?auth=${DINNS_AUTH_KEY}&num=${encodeURIComponent(order.username)}&exp=${order.days}`;
+        dinnsUrl = `https://id.dinns.my.id/api/${renewAction}?auth=${DINNS_AUTH_KEY}&num=${encodeURIComponent(order.username)}&exp=${order.days}&iplimit=${ipParam}`;
       } else {
-        dinnsUrl = `https://id.dinns.my.id/api/create-${proto}?auth=${DINNS_AUTH_KEY}&user=${encodeURIComponent(order.username)}&password=${encodeURIComponent(order.password)}&exp=${order.days}`;
+        dinnsUrl = `https://id.dinns.my.id/api/create-${proto}?auth=${DINNS_AUTH_KEY}&user=${encodeURIComponent(order.username)}&password=${encodeURIComponent(order.password)}&exp=${order.days}&iplimit=${ipParam}`;
       }
 
       try {
@@ -91,7 +90,8 @@ module.exports = async (req, res) => {
             num: order.username,
             user: order.username,
             password: order.password,
-            exp: order.days
+            exp: order.days,
+            iplimit: ipParam
           }, { timeout: 10000 });
 
           if (postRes.data) createdData = postRes.data;
@@ -104,11 +104,11 @@ module.exports = async (req, res) => {
           username: order.username,
           password: order.password || '(Sama seperti sebelumnya)',
           host: 'id.dinns.my.id',
-          expired: `Masa aktif berhasil ditambah ${order.days} Hari`
+          expired: `Masa aktif ditambah ${order.days} Hari (${ipParam} IP)`
         }
       };
 
-      // 3. KIRIM LAPORAN KE TELEGRAM
+      // 3. LAPORAN TELEGRAM
       const notifSuccess = 
 `✅ PEMBAYARAN DINNPAY SUKSES!
 ━━━━━━━━━━━━━━━━━━━
@@ -117,6 +117,7 @@ Invoice    : ${order.orderId}
 Trx ID     : ${order.transactionId}
 Username   : ${order.username}
 Layanan    : ${order.protocol.toUpperCase()}
+Durasi     : ${order.days} Hari (${ipParam} IP)
 Nominal    : Rp ${Number(order.amount).toLocaleString('id-ID')}
 Status     : Aktif di Server Dinns
 ━━━━━━━━━━━━━━━━━━━`;
