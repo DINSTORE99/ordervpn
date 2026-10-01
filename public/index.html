@@ -85,24 +85,52 @@
         </div>
       </div>
 
-      <!-- SLIDER DURASI -->
-      <div id="buySection" class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 space-y-3.5">
-        <div class="flex justify-between items-center">
-          <span id="labelDurationTitle" class="text-xs font-semibold text-slate-300">Durasi Masa Aktif</span>
-          <span id="labelDays" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">30 Hari</span>
+      <!-- PILIHAN PAKET DURASI & LIMIT IP -->
+      <div id="buySection" class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 space-y-4">
+        
+        <!-- PILIHAN DURASI -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-2">Pilih Durasi Paket</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="btnPlan30" onclick="selectDuration(30)" class="p-3 rounded-xl border border-blue-500 bg-blue-600/20 text-left transition duration-150">
+              <div class="text-xs font-bold text-white">30 Hari</div>
+              <div class="text-[11px] text-blue-300 font-semibold mt-0.5">Rp 10.500</div>
+            </button>
+            <button type="button" id="btnPlan60" onclick="selectDuration(60)" class="p-3 rounded-xl border border-slate-700 bg-slate-800/40 text-left transition duration-150">
+              <div class="text-xs font-bold text-white">60 Hari</div>
+              <div class="text-[11px] text-slate-400 font-semibold mt-0.5">Rp 19.000 (Base)</div>
+            </button>
+          </div>
         </div>
 
-        <input type="range" id="inputDays" min="1" max="30" value="30" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="calculatePrice(this.value)">
+        <!-- SET LIMIT IP -->
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="text-xs font-semibold text-slate-300">Batas Limit IP Login</label>
+            <span id="labelIpCount" class="text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">1 IP</span>
+          </div>
 
-        <div class="flex justify-between text-[11px] text-slate-500 font-medium">
-          <span>1 Hari</span>
-          <span>15 Hari</span>
-          <span>30 Hari</span>
+          <!-- Pilihan Tombol Cepat Limit IP -->
+          <div class="grid grid-cols-5 gap-1.5">
+            <button type="button" onclick="selectIp(1)" id="btnIp1" class="py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white border border-blue-500">1 IP</button>
+            <button type="button" onclick="selectIp(2)" id="btnIp2" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:text-white">2 IP</button>
+            <button type="button" onclick="selectIp(3)" id="btnIp3" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:text-white">3 IP</button>
+            <button type="button" onclick="selectIp(4)" id="btnIp4" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:text-white">4 IP</button>
+            <button type="button" onclick="selectIp(5)" id="btnIp5" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:text-white">5 IP</button>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1.5 flex justify-between">
+            <span>+Rp 2.500 per IP tambahan</span>
+            <span id="labelIpExtraPrice" class="text-amber-300">+ Rp 0</span>
+          </div>
         </div>
 
+        <!-- ESTIMASI HARGA -->
         <div class="flex justify-between items-center pt-3 border-t border-slate-800/80">
-          <span class="text-xs text-slate-400">Estimasi Paket:</span>
-          <span id="labelPrice" class="text-xl font-extrabold text-emerald-400 tracking-tight">Rp 9.000</span>
+          <div>
+            <span class="text-xs text-slate-400 block">Total Paket:</span>
+            <span id="labelPlanDetail" class="text-[10px] text-slate-500">30 Hari • 1 IP</span>
+          </div>
+          <span id="labelPrice" class="text-xl font-extrabold text-emerald-400 tracking-tight">Rp 10.500</span>
         </div>
       </div>
 
@@ -153,7 +181,7 @@
       <!-- RINCIAN HARGA, FEE, DAN TOTAL BAYAR -->
       <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 text-left space-y-2.5">
         <div class="flex justify-between text-xs text-slate-400">
-          <span>Harga Paket (<span id="summaryDays">30 Hari</span>):</span>
+          <span>Paket (<span id="summaryDays">30 Hari</span> • <span id="summaryIp">1 IP</span>):</span>
           <span id="summaryBasePrice" class="font-semibold text-slate-200">Rp 0</span>
         </div>
         
@@ -172,12 +200,12 @@
           </button>
         </div>
         <p class="text-[10px] text-amber-300/80 pt-1">
-          ⚠️ <b>Penting:</b> Pastikan Anda mentransfer sesuai nominal persis di atas (termasuk kode digit terakhir) agar terverifikasi otomatis.
+          ⚠️ <b>Penting:</b> Transfer dengan nominal yang sama persis sampai digit terakhir agar sistem memverifikasi secara instan.
         </p>
       </div>
 
       <p class="text-[11px] text-slate-400 leading-relaxed">
-        Scan via Mobile Banking atau E-Wallet (ShopeePay, BCA, Dana, GoPay, OVO). Akun otomatis terproses saat dana masuk.
+        Scan via Mobile Banking atau E-Wallet (ShopeePay, BCA, Dana, GoPay, OVO). Akun otomatis aktif setelah dana masuk.
       </p>
 
       <div class="space-y-2 pt-1">
@@ -240,7 +268,13 @@
 
   <script>
     let currentMode = 'buy';
-    const PRICE_PER_DAY = 300;
+    let selectedDays = 30;
+    let selectedIpLimit = 1;
+
+    const PRICE_30_DAYS = 10500;
+    const PRICE_60_DAYS = 19000; // Base 1 IP (Jika 3 IP: 19.000 + 2*2500 = 24.000)
+    const PRICE_PER_IP = 2500;
+
     let pollInterval = null;
     let timerInterval = null;
     let activeAccountData = null;
@@ -260,7 +294,6 @@
       const trialSection = document.getElementById('trialSection');
       const btnSubmit = document.getElementById('btnSubmit');
       const labelUsernameInput = document.getElementById('labelUsernameInput');
-      const labelDurationTitle = document.getElementById('labelDurationTitle');
 
       const unselectedTab = 'py-2 text-[11px] font-semibold rounded-xl text-slate-400 hover:text-white transition duration-200';
       tabBuy.className = unselectedTab;
@@ -274,7 +307,6 @@
         buySection.classList.remove('hidden');
         trialSection.classList.add('hidden');
         labelUsernameInput.innerText = 'Username Akun';
-        labelDurationTitle.innerText = 'Durasi Masa Aktif';
         btnSubmit.innerText = 'Lanjut ke Pembayaran QRIS (Beli)';
         btnSubmit.className = 'w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-600/20 active:scale-[0.98]';
       } 
@@ -285,7 +317,6 @@
         buySection.classList.remove('hidden');
         trialSection.classList.add('hidden');
         labelUsernameInput.innerText = 'Username Akun Yang Akan Diperpanjang';
-        labelDurationTitle.innerText = 'Tambah Durasi Hari';
         btnSubmit.innerText = 'Lanjut ke Pembayaran QRIS (Renew)';
         btnSubmit.className = 'w-full bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-amber-600/20 active:scale-[0.98]';
       } 
@@ -299,10 +330,46 @@
       }
     }
 
-    function calculatePrice(val) {
-      const days = parseInt(val, 10);
-      const total = days * PRICE_PER_DAY;
-      document.getElementById('labelDays').innerText = `${days} Hari`;
+    function selectDuration(days) {
+      selectedDays = days;
+      const b30 = document.getElementById('btnPlan30');
+      const b60 = document.getElementById('btnPlan60');
+
+      if (days === 30) {
+        b30.className = 'p-3 rounded-xl border border-blue-500 bg-blue-600/20 text-left transition duration-150';
+        b30.querySelector('div:last-child').className = 'text-[11px] text-blue-300 font-semibold mt-0.5';
+        b60.className = 'p-3 rounded-xl border border-slate-700 bg-slate-800/40 text-left transition duration-150';
+        b60.querySelector('div:last-child').className = 'text-[11px] text-slate-400 font-semibold mt-0.5';
+      } else {
+        b60.className = 'p-3 rounded-xl border border-blue-500 bg-blue-600/20 text-left transition duration-150';
+        b60.querySelector('div:last-child').className = 'text-[11px] text-blue-300 font-semibold mt-0.5';
+        b30.className = 'p-3 rounded-xl border border-slate-700 bg-slate-800/40 text-left transition duration-150';
+        b30.querySelector('div:last-child').className = 'text-[11px] text-slate-400 font-semibold mt-0.5';
+      }
+      updatePriceDisplay();
+    }
+
+    function selectIp(ip) {
+      selectedIpLimit = ip;
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById(`btnIp${i}`);
+        if (i === ip) {
+          el.className = 'py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white border border-blue-500';
+        } else {
+          el.className = 'py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:text-white';
+        }
+      }
+      document.getElementById('labelIpCount').innerText = `${ip} IP Device`;
+      updatePriceDisplay();
+    }
+
+    function updatePriceDisplay() {
+      const base = (selectedDays === 60) ? PRICE_60_DAYS : PRICE_30_DAYS;
+      const extraIp = (selectedIpLimit - 1) * PRICE_PER_IP;
+      const total = base + extraIp;
+
+      document.getElementById('labelIpExtraPrice').innerText = extraIp > 0 ? `+ Rp ${extraIp.toLocaleString('id-ID')}` : '+ Rp 0';
+      document.getElementById('labelPlanDetail').innerText = `${selectedDays} Hari • ${selectedIpLimit} IP Device`;
       document.getElementById('labelPrice').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
 
@@ -369,8 +436,7 @@ Layanan         : ${protocol.toUpperCase()}
 Masa Aktif Lama : ${item.previous_expiry || '-'}
 Tambahan Durasi : +${item.days_added || '0'} Hari
 Masa Aktif Baru : ${item.expired || '-'}
-Main Updated    : ${item.main_updated ? 'Ya' : 'Tidak'}
-gRPC Updated    : ${item.grpc_updated ? 'Ya' : 'Tidak'}
+Limit IP        : ${selectedIpLimit} Device
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Catatan: Akun VPN Anda langsung aktif kembali dengan konfigurasi akun sebelumnya.`;
       }
@@ -389,6 +455,7 @@ Catatan: Akun VPN Anda langsung aktif kembali dengan konfigurasi akun sebelumnya
 Status        : Aktif
 Username      : ${item.username || '-'}
 Password      : ${item.password || '-'}
+Limit IP      : ${selectedIpLimit} Device
 Host / Domain : ${item.host || '-'}
 IP Server     : ${item.ip || '-'}
 Lokasi / ISP  : ${item.city || '-'} (${item.isp || '-'})
@@ -442,6 +509,7 @@ Status        : Aktif
 Username      : ${user}
 Domain        : ${domain}
 UUID          : ${uuid}
+Limit IP      : ${selectedIpLimit} Device
 Masa Aktif    : ${exp}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LINK WS TLS (Port 443):
@@ -508,7 +576,6 @@ LINK PENTING:
       // 2. VALIDASI INPUT USERNAME & PASSWORD
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
-      const days = parseInt(document.getElementById('inputDays').value, 10);
 
       if (!username) { 
         btn.disabled = false; 
@@ -550,7 +617,7 @@ LINK PENTING:
             errMsg.includes('pattern ###');
 
           if (isFailed) {
-            alert(`⚠️️ Akun "${username}" TIDAK TERDAFTAR di server Dinns!\n\nPastikan nama akun dan protokol (${protocol.toUpperCase()}) yang Anda masukkan sudah benar.`);
+            alert(`⚠️ Akun "${username}" TIDAK TERDAFTAR di server Dinns!\n\nPastikan nama akun dan protokol (${protocol.toUpperCase()}) yang Anda masukkan sudah benar.`);
             btn.disabled = false;
             btn.innerText = 'Lanjut ke Pembayaran QRIS (Renew)';
             return;
@@ -571,7 +638,8 @@ LINK PENTING:
             username, 
             password: password || 'renew_pass', 
             protocol, 
-            days,
+            days: selectedDays,
+            iplimit: selectedIpLimit,
             actionType: currentMode 
           })
         });
@@ -588,9 +656,9 @@ LINK PENTING:
 
           document.getElementById('qrisImg').src = data.qrImage;
           document.getElementById('summaryDays').innerText = `${data.days} Hari`;
+          document.getElementById('summaryIp').innerText = `${data.iplimit} IP`;
           
-          // Tampilkan Rincian Subtotal, Fee, dan Total Akhir
-          const basePrice = Number(data.baseAmount || (data.days * PRICE_PER_DAY));
+          const basePrice = Number(data.baseAmount || 0);
           const feePrice = Number(data.feeAmount || 0);
           const totalPrice = Number(data.totalAmount || data.amount);
 
