@@ -7,12 +7,14 @@ global.orderStore = memoryStore;
 // ==========================================
 // ⚙️ KONFIGURASI BOT TELEGRAM & DINNS
 // ==========================================
-const TELEGRAM_BOT_TOKEN = 'MASUKKAN_BOT_TOKEN_DISINI'; // Contoh: '7123456789:AAHxxxx...'
-const TELEGRAM_CHAT_ID   = 'MASUKKAN_CHAT_ID_DISINI';   // Contoh: '987654321' (Hanya angka)
+const TELEGRAM_BOT_TOKEN = 'MASUKKAN_BOT_TOKEN_DISINI';
+const TELEGRAM_CHAT_ID   = 'MASUKKAN_CHAT_ID_DISINI';
 
-const PAYMENT_API_KEY = '024fc4ce-36e5-43b4-8f16-283b4390427a';
 const DINNS_AUTH_KEY  = 'pl67k9xp37';
 const PRICE_PER_DAY   = 300; // Rp 300 per hari (Rp 9.000 / 30 hari)
+
+// URL API Gateway DinnPay
+const DINNPAY_CREATE_URL = 'https://dinnpay.vercel.app/api/qris/create';
 
 // Fungsi Kirim Notifikasi Telegram
 async function sendTelegramNotification(text) {
@@ -80,7 +82,6 @@ module.exports = async (req, res) => {
         });
         const resData = testRes.data;
 
-        // Cek pola kegagalan resmi dari panel Dinns
         const errMsg = String(resData?.message || resData?.error || '').toLowerCase();
         const isNotFound = 
           resData?.status === 'failed' || 
@@ -110,35 +111,44 @@ module.exports = async (req, res) => {
     }
 
     // ==============================================================
-    // 💳 2. REQUEST QRIS KE PAYMENT GATEWAY (mybotv1)
+    // 💳 2. REQUEST QRIS KE DINNPAY GATEWAY
     // ==============================================================
-    const totalAmount = days * PRICE_PER_DAY;
+    const baseAmount = days * PRICE_PER_DAY;
     const orderId = `INV-${Date.now()}`;
 
     let qrImage = '';
-    let rawQris = '';
-    let trxId = null;
+    let trxId = orderId;
+    let finalPayAmount = baseAmount;
 
     try {
-      const payUrl = `https://payment.mybotv1.workers.dev/api/deposit?apikey=${PAYMENT_API_KEY}&amount=${totalAmount}`;
-      const payRes = await axios.get(payUrl, { timeout: 9000 });
+      const payRes = await axios.post(
+        DINNPAY_CREATE_URL,
+        {
+          amount: baseAmount,
+          description: `${isRenew ? 'Renew' : 'Buy'} ${proto.toUpperCase()} - ${username.trim()}`,
+          testMode: false
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000
+        }
+      );
+
       const payData = payRes.data;
 
-      rawQris = payData.qr_string || payData.qris || payData.qr || payData.data?.qr_string || payData.data?.qris;
-      trxId = payData.trx_id || payData.id || payData.data?.trx_id || orderId;
-
-      if (rawQris) {
-        qrImage = await QRCode.toDataURL(rawQris, { width: 350, margin: 2 });
-      } else if (payData.qr_url || payData.qr_image || payData.data?.qr_url) {
-        qrImage = payData.qr_url || payData.qr_image || payData.data?.qr_url;
+      if (payData.success && payData.data) {
+        // Ambil URL gambar QR dan total amount (beserta kode unik jika ada)
+        qrImage = payData.data.qr_url;
+        trxId = payData.data.transaction_id || orderId;
+        finalPayAmount = payData.data.total_amount || baseAmount;
+      } else {
+        throw new Error(payData.message || 'Gagal generate QR dari DinnPay');
       }
     } catch (apiErr) {
-      console.warn('Gateway worker error, memakai string cadangan');
-    }
+      console.warn('DinnPay Gateway error, memakai fallback QR:', apiErr.message);
 
-    // Fallback QR code jika worker gateway sedang pending
-    if (!qrImage) {
-      const fallbackPayload = `00020101021226540014ID.CO.QRIS.WWW0118936009990000000001520458125303360540${totalAmount}5802ID5911DINNS STORE6007JAKARTA6304ABCD`;
+      // Fallback generate QR manual jika gateway offline
+      const fallbackPayload = `00020101021226540014ID.CO.QRIS.WWW0118936009990000000001520458125303360540${baseAmount}5802ID5911DINNS STORE6007JAKARTA6304ABCD`;
       qrImage = await QRCode.toDataURL(fallbackPayload, { width: 350, margin: 2 });
     }
 
@@ -152,7 +162,7 @@ module.exports = async (req, res) => {
       password: (password || '').trim(),
       protocol: proto,
       days,
-      amount: totalAmount,
+      amount: finalPayAmount,
       actionType: isRenew ? 'renew' : 'buy',
       status: 'UNPAID',
       credentials: null,
@@ -165,14 +175,15 @@ module.exports = async (req, res) => {
     // 📢 4. KIRIM NOTIFIKASI KE BOT TELEGRAM ADMIN
     // ==============================================================
     const notifText = 
-`🔔 TAGIHAN QRIS DIBUAT
+`🔔 TAGIHAN QRIS DIBUAT (DINNPAY)
 ━━━━━━━━━━━━━━━━━━━
 Jenis      : ${isRenew ? '🔄 PERPANJANG (RENEW)' : '💳 BELI BARU'}
 Invoice    : ${orderId}
+Trx ID     : ${trxId}
 Username   : ${orderData.username}
 Layanan    : ${orderData.protocol.toUpperCase()}
 Durasi     : ${orderData.days} Hari
-Total      : Rp ${totalAmount.toLocaleString('id-ID')}
+Total Bayar: Rp ${finalPayAmount.toLocaleString('id-ID')}
 Status     : Menunggu Pembayaran
 ━━━━━━━━━━━━━━━━━━━`;
 
@@ -181,8 +192,9 @@ Status     : Menunggu Pembayaran
     return res.status(200).json({
       success: true,
       orderId,
+      trxId,
       days,
-      amount: totalAmount,
+      amount: finalPayAmount,
       qrImage
     });
 
