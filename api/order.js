@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
     if (isNaN(days) || days < 1) days = 1;
     if (days > 30) days = 30;
 
-    // 1. VALIDASI RENEW SEBELUM ORDER
+    // 1. VALIDASI RENEW SEBELUM MEMBUAT QRIS
     if (isRenew) {
       const renewEndpoints = {
         ssh: 'rensh',
@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 2. HITUNG NOMINAL (MINIMAL 1000 SESUAI KETENTUAN DINNPAY)
+    // 2. HITUNG NOMINAL DASAR (MINIMAL 1000 UNTUK DINNPAY)
     let calculatedAmount = days * PRICE_PER_DAY;
     let baseAmount = Math.max(calculatedAmount, 1000); 
 
@@ -99,6 +99,7 @@ module.exports = async (req, res) => {
     let transactionId = null;
     let qrImageUrl = '';
     let totalPayAmount = baseAmount;
+    let feeAmount = 0;
 
     try {
       const dinnPayRes = await axios.post('https://dinnpay.vercel.app/api/qris/create', {
@@ -114,7 +115,14 @@ module.exports = async (req, res) => {
       if (dinnData && dinnData.success && dinnData.data) {
         transactionId = dinnData.data.transaction_id;
         qrImageUrl = dinnData.data.qr_url;
-        totalPayAmount = dinnData.data.total_amount || dinnData.data.amount || baseAmount;
+        totalPayAmount = Number(dinnData.data.total_amount || dinnData.data.amount || baseAmount);
+        
+        // Hitung fee/kode unik dari DinnPay
+        if (dinnData.data.amount_uniq !== undefined) {
+          feeAmount = Number(dinnData.data.amount_uniq);
+        } else {
+          feeAmount = Math.max(0, totalPayAmount - baseAmount);
+        }
       } else {
         throw new Error(dinnData?.message || 'Gagal generate QRIS dari DinnPay');
       }
@@ -133,6 +141,8 @@ module.exports = async (req, res) => {
       password: (password || '').trim(),
       protocol: proto,
       days,
+      baseAmount,
+      feeAmount,
       amount: totalPayAmount,
       actionType: isRenew ? 'renew' : 'buy',
       status: 'UNPAID',
@@ -146,14 +156,16 @@ module.exports = async (req, res) => {
     const notifText = 
 `🔔 TAGIHAN QRIS BARU (DinnPay)
 ━━━━━━━━━━━━━━━━━━━
-Jenis      : ${isRenew ? '🔄 PERPANJANG (RENEW)' : '💳 BELI BARU'}
-Invoice    : ${orderId}
-Trx ID     : ${transactionId}
-Username   : ${orderData.username}
-Layanan    : ${orderData.protocol.toUpperCase()}
-Durasi     : ${orderData.days} Hari
-Total Bayar: Rp ${Number(totalPayAmount).toLocaleString('id-ID')}
-Status     : Menunggu Pembayaran
+Jenis       : ${isRenew ? '🔄 PERPANJANG (RENEW)' : '💳 BELI BARU'}
+Invoice     : ${orderId}
+Trx ID      : ${transactionId}
+Username    : ${orderData.username}
+Layanan     : ${orderData.protocol.toUpperCase()}
+Durasi      : ${orderData.days} Hari
+Harga Paket : Rp ${baseAmount.toLocaleString('id-ID')}
+Fee / Kode  : Rp ${feeAmount.toLocaleString('id-ID')}
+Total Bayar : Rp ${totalPayAmount.toLocaleString('id-ID')} (Wajib Pas)
+Status      : Menunggu Pembayaran
 ━━━━━━━━━━━━━━━━━━━`;
     await sendTelegramNotification(notifText);
 
@@ -161,8 +173,10 @@ Status     : Menunggu Pembayaran
       success: true,
       orderId,
       days,
-      amount: totalPayAmount,
-      qrImage: qrImageUrl // Menggunakan URL gambar dari DinnPay
+      baseAmount,
+      feeAmount,
+      totalAmount: totalPayAmount,
+      qrImage: qrImageUrl
     });
 
   } catch (err) {
