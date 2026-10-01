@@ -101,7 +101,7 @@
         </div>
 
         <div class="flex justify-between items-center pt-3 border-t border-slate-800/80">
-          <span class="text-xs text-slate-400">Total Pembayaran:</span>
+          <span class="text-xs text-slate-400">Estimasi Paket:</span>
           <span id="labelPrice" class="text-xl font-extrabold text-emerald-400 tracking-tight">Rp 9.000</span>
         </div>
       </div>
@@ -129,7 +129,7 @@
         <span id="timerText" class="font-mono text-sm font-bold text-rose-300">05:00</span>
       </div>
 
-      <div class="relative inline-block my-2">
+      <div class="relative inline-block my-1">
         <div class="bg-white p-3.5 rounded-2xl shadow-xl inline-block">
           <img id="qrisImg" src="" alt="Scan QRIS" class="w-56 h-56 mx-auto object-contain">
         </div>
@@ -150,9 +150,30 @@
         </button>
       </div>
 
-      <div class="bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800">
-        <div class="text-[11px] text-slate-400">Total Tagihan (<span id="summaryDays" class="text-slate-300">30 Hari</span>):</div>
-        <div id="summaryPrice" class="text-2xl font-black text-emerald-400 mt-0.5">Rp 0</div>
+      <!-- RINCIAN HARGA, FEE, DAN TOTAL BAYAR -->
+      <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 text-left space-y-2.5">
+        <div class="flex justify-between text-xs text-slate-400">
+          <span>Harga Paket (<span id="summaryDays">30 Hari</span>):</span>
+          <span id="summaryBasePrice" class="font-semibold text-slate-200">Rp 0</span>
+        </div>
+        
+        <div class="flex justify-between text-xs text-slate-400">
+          <span>Biaya Layanan / Fee QRIS:</span>
+          <span id="summaryFeePrice" class="font-semibold text-amber-400">+ Rp 0</span>
+        </div>
+
+        <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+          <div>
+            <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Harus Dibayar:</div>
+            <div id="summaryTotalPrice" class="text-2xl font-black text-emerald-400 tracking-tight">Rp 0</div>
+          </div>
+          <button onclick="copyTotalAmount()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg border border-slate-700 transition">
+            📋 Salin Nominal
+          </button>
+        </div>
+        <p class="text-[10px] text-amber-300/80 pt-1">
+          ⚠️ <b>Penting:</b> Pastikan Anda mentransfer sesuai nominal persis di atas (termasuk kode digit terakhir) agar terverifikasi otomatis.
+        </p>
       </div>
 
       <p class="text-[11px] text-slate-400 leading-relaxed">
@@ -160,7 +181,6 @@
       </p>
 
       <div class="space-y-2 pt-1">
-        <!-- Pengecekan manual menggunakan isManualClick = true -->
         <button id="btnCheckPay" onclick="checkPaymentStatus(currentOrderId, true, false)" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-600/20">
           🔄 Sudah Bayar? Cek Status Sekarang
         </button>
@@ -227,6 +247,7 @@
     let activeProtocol = 'ssh';
     let currentOrderId = null;
     let currentQrImage = '';
+    let currentRawTotal = 0;
 
     function switchMode(mode) {
       currentMode = mode;
@@ -293,6 +314,12 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+
+    function copyTotalAmount() {
+      if (!currentRawTotal) return;
+      navigator.clipboard.writeText(String(currentRawTotal));
+      alert(`Nominal persis Rp ${currentRawTotal.toLocaleString('id-ID')} berhasil disalin ke clipboard!`);
     }
 
     function startCountdown(durationSeconds) {
@@ -523,7 +550,7 @@ LINK PENTING:
             errMsg.includes('pattern ###');
 
           if (isFailed) {
-            alert(`⚠️ Akun "${username}" TIDAK TERDAFTAR di server Dinns!\n\nPastikan nama akun dan protokol (${protocol.toUpperCase()}) yang Anda masukkan sudah benar.`);
+            alert(`⚠️️ Akun "${username}" TIDAK TERDAFTAR di server Dinns!\n\nPastikan nama akun dan protokol (${protocol.toUpperCase()}) yang Anda masukkan sudah benar.`);
             btn.disabled = false;
             btn.innerText = 'Lanjut ke Pembayaran QRIS (Renew)';
             return;
@@ -534,7 +561,7 @@ LINK PENTING:
       }
 
       // 4. JIKA AKUN ADA (ATAU MODE BELI), BUAT TAGIHAN QRIS
-      btn.innerText = 'Menyiapkan QRIS...';
+      btn.innerText = 'Menyiapkan QRIS & Fee...';
 
       try {
         const res = await fetch('/api/order', {
@@ -554,13 +581,22 @@ LINK PENTING:
         if (res.ok && data.success) {
           currentOrderId = data.orderId;
           currentQrImage = data.qrImage;
+          currentRawTotal = Number(data.totalAmount || data.amount);
 
           document.getElementById('stepForm').classList.add('hidden');
           document.getElementById('stepQris').classList.remove('hidden');
 
           document.getElementById('qrisImg').src = data.qrImage;
           document.getElementById('summaryDays').innerText = `${data.days} Hari`;
-          document.getElementById('summaryPrice').innerText = 'Rp ' + Number(data.amount).toLocaleString('id-ID');
+          
+          // Tampilkan Rincian Subtotal, Fee, dan Total Akhir
+          const basePrice = Number(data.baseAmount || (data.days * PRICE_PER_DAY));
+          const feePrice = Number(data.feeAmount || 0);
+          const totalPrice = Number(data.totalAmount || data.amount);
+
+          document.getElementById('summaryBasePrice').innerText = 'Rp ' + basePrice.toLocaleString('id-ID');
+          document.getElementById('summaryFeePrice').innerText = '+ Rp ' + feePrice.toLocaleString('id-ID');
+          document.getElementById('summaryTotalPrice').innerText = 'Rp ' + totalPrice.toLocaleString('id-ID');
 
           document.getElementById('expiredOverlay').classList.add('hidden');
           document.getElementById('btnDownloadQris').disabled = false;
@@ -581,7 +617,6 @@ LINK PENTING:
       }
     }
 
-    // FUNGSI CEK STATUS (HENING SAAT POLLING, ALERT HANYA JIKA KLIK MANUAL)
     async function checkPaymentStatus(orderId, isManualClick = false, isSimulation = false) {
       if (!orderId) return;
 
@@ -608,7 +643,6 @@ LINK PENTING:
           document.getElementById('resultBanner').innerText = `🎉 Berhasil Diproses! Akun ${userLabel} Aktif`;
           document.getElementById('outputResult').value = formatVpnOutput(data.credentials, document.getElementById('protocol').value);
         } else {
-          // HANYA MUNCUL JIKA PEMBELI MENEKAN TOMBOL SECARA MANUAL
           if (isManualClick && !isSimulation) {
             alert('Pembayaran belum terdeteksi. Silakan selesaikan scan QRIS terlebih dahulu.');
           }
@@ -625,7 +659,6 @@ LINK PENTING:
 
     function startPolling(orderId, protocol) {
       if (pollInterval) clearInterval(pollInterval);
-      // Pengecekan otomatis berjalan tanpa alert (isManualClick = false)
       pollInterval = setInterval(() => {
         checkPaymentStatus(orderId, false, false);
       }, 3500);
