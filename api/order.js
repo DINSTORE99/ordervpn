@@ -10,10 +10,18 @@ const TELEGRAM_BOT_TOKEN = 'MASUKKAN_BOT_TOKEN_DISINI';
 const TELEGRAM_CHAT_ID   = 'MASUKKAN_CHAT_ID_DISINI';
 const DINNS_AUTH_KEY     = 'pl67k9xp37';
 
-// Skema Harga Baru
-const PRICE_30_DAYS = 10500;
-const PRICE_60_DAYS = 19000; // Base 1 IP (Jika 3 IP: 19.000 + 2 * 2.500 = 24.000)
 const PRICE_PER_ADDITIONAL_IP = 2500;
+
+// Rumus hitung base nominal durasi fleksibel (1 - 60 hari)
+function calculateBasePrice(days) {
+  if (days <= 30) {
+    return days * 350; // 30 hari = 10.500
+  }
+  // 31 sampai 60 hari (pada 60 hari pas 19.000)
+  const extraDays = days - 30;
+  const pricePerExtraDay = (19000 - 10500) / 30; // 283.333
+  return Math.round(10500 + (extraDays * pricePerExtraDay));
+}
 
 async function sendTelegramNotification(text) {
   if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) return;
@@ -51,7 +59,8 @@ module.exports = async (req, res) => {
     }
 
     days = parseInt(days, 10);
-    if (days !== 30 && days !== 60) days = 30;
+    if (isNaN(days) || days < 1) days = 1;
+    if (days > 60) days = 60;
 
     iplimit = parseInt(iplimit, 10);
     if (isNaN(iplimit) || iplimit < 1) iplimit = 1;
@@ -95,10 +104,10 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 2. HITUNG TOTAL HARGA BERDASARKAN DURASI & LIMIT IP
-    let basePrice = (days === 60) ? PRICE_60_DAYS : PRICE_30_DAYS;
+    // 2. HITUNG TOTAL HARGA (MINIMAL 1000 KETENTUAN DINNPAY)
+    let calculatedBase = calculateBasePrice(days);
     let extraIpPrice = (iplimit - 1) * PRICE_PER_ADDITIONAL_IP;
-    let totalBaseAmount = basePrice + extraIpPrice;
+    let totalBaseAmount = Math.max(1000, calculatedBase + extraIpPrice);
 
     const orderId = `INV-${Date.now()}`;
 
