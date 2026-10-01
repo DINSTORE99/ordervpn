@@ -85,21 +85,22 @@
         </div>
       </div>
 
-      <!-- PILIHAN PAKET DURASI & LIMIT IP -->
+      <!-- SLIDER DURASI & LIMIT IP -->
       <div id="buySection" class="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 space-y-4">
         
-        <!-- PILIHAN DURASI -->
+        <!-- SLIDER DURASI GESER (1 SAMPAI 60 HARI) -->
         <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-2">Pilih Durasi Paket</label>
-          <div class="grid grid-cols-2 gap-2">
-            <button type="button" id="btnPlan30" onclick="selectDuration(30)" class="p-3 rounded-xl border border-blue-500 bg-blue-600/20 text-left transition duration-150">
-              <div class="text-xs font-bold text-white">30 Hari</div>
-              <div class="text-[11px] text-blue-300 font-semibold mt-0.5">Rp 10.500</div>
-            </button>
-            <button type="button" id="btnPlan60" onclick="selectDuration(60)" class="p-3 rounded-xl border border-slate-700 bg-slate-800/40 text-left transition duration-150">
-              <div class="text-xs font-bold text-white">60 Hari</div>
-              <div class="text-[11px] text-slate-400 font-semibold mt-0.5">Rp 19.000 (Base)</div>
-            </button>
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-xs font-semibold text-slate-300">Durasi Masa Aktif</span>
+            <span id="labelDays" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">30 Hari</span>
+          </div>
+
+          <input type="range" id="inputDays" min="1" max="60" value="30" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="onDaysSliderChange(this.value)">
+
+          <div class="flex justify-between text-[11px] text-slate-500 font-medium mt-1">
+            <span>1 Hari</span>
+            <span>30 Hari (10.5k)</span>
+            <span>60 Hari (19k)</span>
           </div>
         </div>
 
@@ -110,7 +111,6 @@
             <span id="labelIpCount" class="text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">1 IP</span>
           </div>
 
-          <!-- Pilihan Tombol Cepat Limit IP -->
           <div class="grid grid-cols-5 gap-1.5">
             <button type="button" onclick="selectIp(1)" id="btnIp1" class="py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white border border-blue-500">1 IP</button>
             <button type="button" onclick="selectIp(2)" id="btnIp2" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700 hover:text-white">2 IP</button>
@@ -270,9 +270,6 @@
     let currentMode = 'buy';
     let selectedDays = 30;
     let selectedIpLimit = 1;
-
-    const PRICE_30_DAYS = 10500;
-    const PRICE_60_DAYS = 19000; // Base 1 IP (Jika 3 IP: 19.000 + 2*2500 = 24.000)
     const PRICE_PER_IP = 2500;
 
     let pollInterval = null;
@@ -330,22 +327,19 @@
       }
     }
 
-    function selectDuration(days) {
-      selectedDays = days;
-      const b30 = document.getElementById('btnPlan30');
-      const b60 = document.getElementById('btnPlan60');
-
-      if (days === 30) {
-        b30.className = 'p-3 rounded-xl border border-blue-500 bg-blue-600/20 text-left transition duration-150';
-        b30.querySelector('div:last-child').className = 'text-[11px] text-blue-300 font-semibold mt-0.5';
-        b60.className = 'p-3 rounded-xl border border-slate-700 bg-slate-800/40 text-left transition duration-150';
-        b60.querySelector('div:last-child').className = 'text-[11px] text-slate-400 font-semibold mt-0.5';
-      } else {
-        b60.className = 'p-3 rounded-xl border border-blue-500 bg-blue-600/20 text-left transition duration-150';
-        b60.querySelector('div:last-child').className = 'text-[11px] text-blue-300 font-semibold mt-0.5';
-        b30.className = 'p-3 rounded-xl border border-slate-700 bg-slate-800/40 text-left transition duration-150';
-        b30.querySelector('div:last-child').className = 'text-[11px] text-slate-400 font-semibold mt-0.5';
+    // Fungsi menghitung base price sesuai durasi geser
+    function calcBase(days) {
+      if (days <= 30) {
+        return days * 350; // 30 hari = 10.500
       }
+      const extra = days - 30;
+      const rate = (19000 - 10500) / 30;
+      return Math.round(10500 + (extra * rate)); // 60 hari = 19.000
+    }
+
+    function onDaysSliderChange(val) {
+      selectedDays = parseInt(val, 10);
+      document.getElementById('labelDays').innerText = `${selectedDays} Hari`;
       updatePriceDisplay();
     }
 
@@ -364,7 +358,7 @@
     }
 
     function updatePriceDisplay() {
-      const base = (selectedDays === 60) ? PRICE_60_DAYS : PRICE_30_DAYS;
+      const base = calcBase(selectedDays);
       const extraIp = (selectedIpLimit - 1) * PRICE_PER_IP;
       const total = base + extraIp;
 
