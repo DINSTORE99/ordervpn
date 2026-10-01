@@ -98,9 +98,9 @@
           <input type="range" id="inputDays" min="1" max="60" value="30" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500" oninput="onDaysSliderChange(this.value)">
 
           <div class="flex justify-between text-[11px] text-slate-500 font-medium mt-1">
-            <span>1 Hari</span>
-            <span>30 Hari (10.5k)</span>
-            <span>60 Hari (19k)</span>
+            <span>4 Hari</span>
+            <span>30 Hari</span>
+            <span>60 Hari</span>
           </div>
         </div>
 
@@ -611,7 +611,7 @@ LINK PENTING:
             errMsg.includes('pattern ###');
 
           if (isFailed) {
-            alert(`⚠️ Akun "${username}" TIDAK TERDAFTAR di server Dinns!\n\nPastikan nama akun dan protokol (${protocol.toUpperCase()}) yang Anda masukkan sudah benar.`);
+            alert(`⚠️ Akun "${username}" TIDAK TERDAFTAR di server!\n\nPastikan nama akun dan protokol (${protocol.toUpperCase()}) yang Anda masukkan sudah benar.`);
             btn.disabled = false;
             btn.innerText = 'Lanjut ke Pembayaran QRIS (Renew)';
             return;
