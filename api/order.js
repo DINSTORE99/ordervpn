@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
     }
 
     days = parseInt(days, 10);
-    if (isNaN(days) || days < 1) days = 1;
+    if (isNaN(days) || days < 4) days = 4;
     if (days > 60) days = 60;
 
     iplimit = parseInt(iplimit, 10);
