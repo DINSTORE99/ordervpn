@@ -12,14 +12,12 @@ const DINNS_AUTH_KEY     = 'pl67k9xp37';
 
 const PRICE_PER_ADDITIONAL_IP = 2500;
 
-// Rumus hitung base nominal durasi fleksibel (1 - 60 hari)
 function calculateBasePrice(days) {
   if (days <= 30) {
-    return days * 350; // 30 hari = 10.500
+    return days * 350;
   }
-  // 31 sampai 60 hari (pada 60 hari pas 19.000)
   const extraDays = days - 30;
-  const pricePerExtraDay = (19000 - 10500) / 30; // 283.333
+  const pricePerExtraDay = (19000 - 10500) / 30;
   return Math.round(10500 + (extraDays * pricePerExtraDay));
 }
 
@@ -66,7 +64,6 @@ module.exports = async (req, res) => {
     if (isNaN(iplimit) || iplimit < 1) iplimit = 1;
     if (iplimit > 5) iplimit = 5;
 
-    // 1. VALIDASI RENEW SEBELUM MEMBUAT QRIS
     if (isRenew) {
       const renewEndpoints = {
         ssh: 'rensh',
@@ -104,14 +101,12 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 2. HITUNG TOTAL HARGA (MINIMAL 1000 KETENTUAN DINNPAY)
     let calculatedBase = calculateBasePrice(days);
     let extraIpPrice = (iplimit - 1) * PRICE_PER_ADDITIONAL_IP;
     let totalBaseAmount = Math.max(1000, calculatedBase + extraIpPrice);
 
     const orderId = `INV-${Date.now()}`;
 
-    // 3. REQUEST BUAT QRIS KE DINNPAY
     let transactionId = null;
     let qrImageUrl = '';
     let totalPayAmount = totalBaseAmount;
@@ -148,7 +143,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 4. SIMPAN DATA TRANSAKSI
     const orderData = {
       orderId,
       transactionId,
@@ -168,7 +162,6 @@ module.exports = async (req, res) => {
 
     memoryStore.set(orderId, orderData);
 
-    // 5. NOTIFIKASI TELEGRAM
     const notifText = 
 `🔔 TAGIHAN QRIS BARU (DinnPay)
 ━━━━━━━━━━━━━━━━━━━
