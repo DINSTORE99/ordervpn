@@ -8,9 +8,12 @@ global.orderStore = memoryStore;
 // ==========================================
 const TELEGRAM_BOT_TOKEN = 'MASUKKAN_BOT_TOKEN_DISINI';
 const TELEGRAM_CHAT_ID   = 'MASUKKAN_CHAT_ID_DISINI';
+const DINNS_AUTH_KEY     = 'pl67k9xp37';
 
-const DINNS_AUTH_KEY  = 'pl67k9xp37';
-const PRICE_PER_DAY   = 300; // Rp 300 per hari
+// Skema Harga Baru
+const PRICE_30_DAYS = 10500;
+const PRICE_60_DAYS = 19000; // Base 1 IP (Jika 3 IP: 19.000 + 2 * 2.500 = 24.000)
+const PRICE_PER_ADDITIONAL_IP = 2500;
 
 async function sendTelegramNotification(text) {
   if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) return;
@@ -34,7 +37,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   try {
-    let { username, password, protocol, days, actionType } = req.body || {};
+    let { username, password, protocol, days, iplimit, actionType } = req.body || {};
 
     if (!username || !username.trim()) {
       return res.status(400).json({ error: 'Username wajib diisi!' });
@@ -48,8 +51,11 @@ module.exports = async (req, res) => {
     }
 
     days = parseInt(days, 10);
-    if (isNaN(days) || days < 1) days = 1;
-    if (days > 30) days = 30;
+    if (days !== 30 && days !== 60) days = 30;
+
+    iplimit = parseInt(iplimit, 10);
+    if (isNaN(iplimit) || iplimit < 1) iplimit = 1;
+    if (iplimit > 5) iplimit = 5;
 
     // 1. VALIDASI RENEW SEBELUM MEMBUAT QRIS
     if (isRenew) {
@@ -76,7 +82,7 @@ module.exports = async (req, res) => {
 
         if (isNotFound) {
           return res.status(400).json({
-            error: `Akun "${username}" tidak terdaftar di server Dinns! Pastikan username dan protokol benar.`
+            error: `Akun "${username}" tidak terdaftar di server Dinns!`
           });
         }
       } catch (err) {
@@ -89,22 +95,23 @@ module.exports = async (req, res) => {
       }
     }
 
-    // 2. HITUNG NOMINAL DASAR (MINIMAL 1000 UNTUK DINNPAY)
-    let calculatedAmount = days * PRICE_PER_DAY;
-    let baseAmount = Math.max(calculatedAmount, 1000); 
+    // 2. HITUNG TOTAL HARGA BERDASARKAN DURASI & LIMIT IP
+    let basePrice = (days === 60) ? PRICE_60_DAYS : PRICE_30_DAYS;
+    let extraIpPrice = (iplimit - 1) * PRICE_PER_ADDITIONAL_IP;
+    let totalBaseAmount = basePrice + extraIpPrice;
 
     const orderId = `INV-${Date.now()}`;
 
     // 3. REQUEST BUAT QRIS KE DINNPAY
     let transactionId = null;
     let qrImageUrl = '';
-    let totalPayAmount = baseAmount;
+    let totalPayAmount = totalBaseAmount;
     let feeAmount = 0;
 
     try {
       const dinnPayRes = await axios.post('https://dinnpay.vercel.app/api/qris/create', {
-        amount: baseAmount,
-        description: `Order ${orderId} - ${username}`,
+        amount: totalBaseAmount,
+        description: `Order ${orderId} - ${username} (${days}H/${iplimit}IP)`,
         testMode: false
       }, {
         headers: { 'Content-Type': 'application/json' },
@@ -115,13 +122,12 @@ module.exports = async (req, res) => {
       if (dinnData && dinnData.success && dinnData.data) {
         transactionId = dinnData.data.transaction_id;
         qrImageUrl = dinnData.data.qr_url;
-        totalPayAmount = Number(dinnData.data.total_amount || dinnData.data.amount || baseAmount);
-        
-        // Hitung fee/kode unik dari DinnPay
+        totalPayAmount = Number(dinnData.data.total_amount || dinnData.data.amount || totalBaseAmount);
+
         if (dinnData.data.amount_uniq !== undefined) {
           feeAmount = Number(dinnData.data.amount_uniq);
         } else {
-          feeAmount = Math.max(0, totalPayAmount - baseAmount);
+          feeAmount = Math.max(0, totalPayAmount - totalBaseAmount);
         }
       } else {
         throw new Error(dinnData?.message || 'Gagal generate QRIS dari DinnPay');
@@ -141,7 +147,8 @@ module.exports = async (req, res) => {
       password: (password || '').trim(),
       protocol: proto,
       days,
-      baseAmount,
+      iplimit,
+      baseAmount: totalBaseAmount,
       feeAmount,
       amount: totalPayAmount,
       actionType: isRenew ? 'renew' : 'buy',
@@ -152,7 +159,7 @@ module.exports = async (req, res) => {
 
     memoryStore.set(orderId, orderData);
 
-    // 5. KIRIM NOTIFIKASI TELEGRAM
+    // 5. NOTIFIKASI TELEGRAM
     const notifText = 
 `🔔 TAGIHAN QRIS BARU (DinnPay)
 ━━━━━━━━━━━━━━━━━━━
@@ -162,8 +169,9 @@ Trx ID      : ${transactionId}
 Username    : ${orderData.username}
 Layanan     : ${orderData.protocol.toUpperCase()}
 Durasi      : ${orderData.days} Hari
-Harga Paket : Rp ${baseAmount.toLocaleString('id-ID')}
-Fee / Kode  : Rp ${feeAmount.toLocaleString('id-ID')}
+Limit IP    : ${orderData.iplimit} IP Device
+Harga Paket : Rp ${totalBaseAmount.toLocaleString('id-ID')}
+Fee / Unik  : Rp ${feeAmount.toLocaleString('id-ID')}
 Total Bayar : Rp ${totalPayAmount.toLocaleString('id-ID')} (Wajib Pas)
 Status      : Menunggu Pembayaran
 ━━━━━━━━━━━━━━━━━━━`;
@@ -173,7 +181,8 @@ Status      : Menunggu Pembayaran
       success: true,
       orderId,
       days,
-      baseAmount,
+      iplimit,
+      baseAmount: totalBaseAmount,
       feeAmount,
       totalAmount: totalPayAmount,
       qrImage: qrImageUrl
