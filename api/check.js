@@ -9,7 +9,6 @@ global.orderStore = memoryStore;
 const TELEGRAM_BOT_TOKEN = 'MASUKKAN_BOT_TOKEN_DISINI';
 const TELEGRAM_CHAT_ID   = 'MASUKKAN_CHAT_ID_DISINI';
 
-const PAYMENT_API_KEY = '024fc4ce-36e5-43b4-8f16-283b4390427a';
 const DINNS_AUTH_KEY  = 'pl67k9xp37';
 
 async function sendTelegramNotification(text) {
@@ -32,31 +31,33 @@ module.exports = async (req, res) => {
   const order = memoryStore.get(orderId);
   if (!order) return res.status(404).json({ error: 'Pesanan tidak ditemukan' });
 
+  // Mode Simulasi untuk Testing
   if (simulate_pay === 'true') {
     order.status = 'PAID';
   }
 
-  // 1. Cek mutasi pembayaran
-  if (order.status !== 'PAID') {
+  // 1. CEK STATUS PEMBAYARAN KE DINNPAY VIA POST /api/qris/status
+  if (order.status !== 'PAID' && order.transactionId) {
     try {
-      const trxUrl = `https://payment.mybotv1.workers.dev/api/trx?apikey=${PAYMENT_API_KEY}`;
-      const trxRes = await axios.get(trxUrl, { timeout: 7000 });
-      const trxList = Array.isArray(trxRes.data) ? trxRes.data : (trxRes.data?.data || []);
-
-      const matched = trxList.find(t => {
-        const isAmountMatch = Number(t.amount || t.nominal) === Number(order.amount);
-        const isSuccess = (t.status === 'success' || t.status === 'SUCCESS' || t.status === 'paid' || t.status === 'PAID');
-        const isTrxMatch = order.trxId && (t.trx_id === order.trxId || t.id === order.trxId);
-        return (isTrxMatch || isAmountMatch) && isSuccess;
+      const statusRes = await axios.post('https://dinnpay.vercel.app/api/qris/status', {
+        transaction_id: order.transactionId
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 7000
       });
 
-      if (matched) {
+      const resData = statusRes.data;
+      const status = (resData?.data?.status || resData?.status || '').toLowerCase();
+
+      if (status === 'paid' || status === 'success' || status === 'settlement' || status === 'berhasil') {
         order.status = 'PAID';
       }
-    } catch (e) {}
+    } catch (err) {
+      console.warn('Gagal cek status ke DinnPay:', err.response?.data || err.message);
+    }
   }
 
-  // 2. Eksekusi ke Server Dinns saat status PAID
+  // 2. EKSEKUSI KE VPS DINNS KETIKA SUDAH LUNAS (PAID)
   if (order.status === 'PAID' && !order.credentials) {
     try {
       const proto = order.protocol || 'ssh';
@@ -71,34 +72,29 @@ module.exports = async (req, res) => {
           trojan: 'rentr'
         };
         const renewAction = renewEndpoints[proto] || 'rensh';
-        dinnsUrl = `https://id.dinns.my.id/api/${renewAction}?auth=${DINNS_AUTH_KEY}&user=${order.username}&exp=${order.days}`;
+        dinnsUrl = `https://id.dinns.my.id/api/${renewAction}?auth=${DINNS_AUTH_KEY}&num=${encodeURIComponent(order.username)}&exp=${order.days}`;
       } else {
-        dinnsUrl = `https://id.dinns.my.id/api/create-${proto}?auth=${DINNS_AUTH_KEY}&user=${order.username}&password=${order.password}&exp=${order.days}`;
+        dinnsUrl = `https://id.dinns.my.id/api/create-${proto}?auth=${DINNS_AUTH_KEY}&user=${encodeURIComponent(order.username)}&password=${encodeURIComponent(order.password)}&exp=${order.days}`;
       }
 
       try {
         const dinnsRes = await axios.get(dinnsUrl, { timeout: 10000 });
         if (dinnsRes.data && (dinnsRes.data.status === 'success' || dinnsRes.data.data)) {
           createdData = dinnsRes.data;
-        } else if (dinnsRes.data && (dinnsRes.data.status === 'failed' || dinnsRes.data.status === 'error')) {
-          createdData = {
-            status: 'failed',
-            message: dinnsRes.data.message || 'Akun tidak terdaftar di server'
-          };
+        } else if (dinnsRes.data) {
+          createdData = dinnsRes.data;
         }
       } catch (getErr) {
         const endpointOnly = dinnsUrl.split('?')[0];
         try {
           const postRes = await axios.post(`${endpointOnly}?auth=${DINNS_AUTH_KEY}`, {
+            num: order.username,
             user: order.username,
-            username: order.username,
             password: order.password,
             exp: order.days
           }, { timeout: 10000 });
 
-          if (postRes.data && (postRes.data.status === 'success' || postRes.data.data)) {
-            createdData = postRes.data;
-          }
+          if (postRes.data) createdData = postRes.data;
         } catch (postErr) {}
       }
 
@@ -108,21 +104,23 @@ module.exports = async (req, res) => {
           username: order.username,
           password: order.password || '(Sama seperti sebelumnya)',
           host: 'id.dinns.my.id',
-          expired: `Ditambah ${order.days} Hari`
+          expired: `Masa aktif berhasil ditambah ${order.days} Hari`
         }
       };
 
+      // 3. KIRIM LAPORAN KE TELEGRAM
       const notifSuccess = 
-`✅ PEMBAYARAN SUKSES!
+`✅ PEMBAYARAN DINNPAY SUKSES!
 ━━━━━━━━━━━━━━━━━━━
 Aksi       : ${order.actionType === 'renew' ? '🔄 Perpanjang (Renew)' : '💳 Akun Baru'}
 Invoice    : ${order.orderId}
+Trx ID     : ${order.transactionId}
 Username   : ${order.username}
 Layanan    : ${order.protocol.toUpperCase()}
-Nominal    : Rp ${order.amount.toLocaleString('id-ID')}
-Status     : Selesai diproses di VPS Dinns
+Nominal    : Rp ${Number(order.amount).toLocaleString('id-ID')}
+Status     : Aktif di Server Dinns
 ━━━━━━━━━━━━━━━━━━━`;
-      sendTelegramNotification(notifSuccess);
+      await sendTelegramNotification(notifSuccess);
 
     } catch (err) {
       console.error('Error proses VPS Dinns:', err.message);
