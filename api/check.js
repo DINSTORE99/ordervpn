@@ -7,6 +7,18 @@ const TELEGRAM_BOT_TOKEN = '8117724992:AAH59YJ5omb6KwnwpQgV6VxZhtHElExdvOg';
 const TELEGRAM_CHAT_ID   = '6452266025';
 const DINNS_AUTH_KEY     = 'pl67k9xp37';
 
+function formatWIB(timestamp) {
+  return new Date(timestamp || Date.now()).toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }) + ' WIB';
+}
+
 async function sendTelegramNotification(text) {
   if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.includes('MASUKKAN')) return;
   try {
@@ -42,18 +54,21 @@ module.exports = async (req, res) => {
     iplimit: parseInt(iplimit || 1, 10),
     actionType: actionType || 'buy',
     status: 'UNPAID',
+    createdAt: Date.now(),
+    paidAt: null,
     credentials: null
   };
 
   const currentTrxId = String(order.transactionId || trx_id || '');
 
-  // Mode Simulasi Testing
   if (simulate_pay === 'true') {
     order.status = 'PAID';
   }
 
   // 1. CEK STATUS TRANSAKSI KE DINNPAY
-  let dinnPayRaw = null;
+  let isRateLimited = false;
+  let retryAfterSeconds = 20;
+
   if (order.status !== 'PAID' && currentTrxId) {
     try {
       const statusRes = await axios.post('https://dinnpay.vercel.app/api/qris/status', {
@@ -63,33 +78,25 @@ module.exports = async (req, res) => {
         timeout: 9000
       });
 
-      dinnPayRaw = statusRes.data;
-      console.log('DinnPay Status Response:', JSON.stringify(dinnPayRaw));
+      const resData = statusRes.data;
+      const statusValue = String(resData?.data?.status || resData?.status || '').toLowerCase();
 
-      // Ekstraksi status dari berbagai kemungkinan skema respon
-      const dataObj = dinnPayRaw?.data || dinnPayRaw || {};
-      const statusStr = String(dataObj?.status || dinnPayRaw?.status || '').toLowerCase();
-      const isPaidBool = Boolean(dataObj?.paid || dataObj?.is_paid || dinnPayRaw?.paid);
-
-      // Verifikasi jika lunas
-      if (
-        isPaidBool === true ||
-        statusStr === 'paid' ||
-        statusStr === 'success' ||
-        statusStr === 'settlement' ||
-        statusStr === 'berhasil' ||
-        statusStr === 'sukses'
-      ) {
+      if (statusValue === 'success' || statusValue === 'paid' || statusValue === 'settlement' || resData?.data?.paid === true) {
         order.status = 'PAID';
+        order.paidAt = Date.now();
       }
     } catch (err) {
-      console.warn('Gagal cek status DinnPay:', err.response?.data || err.message);
+      if (err.response?.status === 429) {
+        isRateLimited = true;
+        retryAfterSeconds = err.response?.data?.retry_after || 15;
+      }
     }
   }
 
-  // 2. EKSEKUSI PEMBUATAN / PERPANJANGAN KE VPS DINNS SAAT STATUS PAID
+  // 2. EKSEKUSI PEMBUATAN / PERPANJANGAN DI VPS DINNS
   if (order.status === 'PAID' && !order.credentials && order.username) {
     try {
+      if (!order.paidAt) order.paidAt = Date.now();
       const proto = order.protocol || 'ssh';
       const ipParam = order.iplimit || 1;
       let dinnsUrl = '';
@@ -142,17 +149,19 @@ module.exports = async (req, res) => {
 
       memoryStore.set(order.orderId, order);
 
-      // Notifikasi Sukses Telegram
+      // Notifikasi Sukses Telegram dengan Info Waktu Pembuatan & Penerimaan
       const notifSuccess = 
-`✅ PEMBAYARAN DINNPAY TERVERIFIKASI!
+`✅ PEMBAYARAN QRIS DITERIMA & SUKSES!
 ━━━━━━━━━━━━━━━━━━━
-Aksi       : ${order.actionType === 'renew' ? '🔄 Perpanjang (Renew)' : '💳 Akun Baru'}
-Invoice    : ${order.orderId}
-Trx ID     : ${currentTrxId}
-Username   : ${order.username}
-Layanan    : ${order.protocol.toUpperCase()}
-Durasi     : ${order.days} Hari (${ipParam} IP)
-Status     : Sukses dieksekusi di Server Dinns
+Aksi        : ${order.actionType === 'renew' ? '🔄 Perpanjang (Renew)' : '💳 Akun Baru'}
+Invoice     : ${order.orderId}
+Trx ID      : ${currentTrxId}
+Username    : ${order.username}
+Layanan     : ${order.protocol.toUpperCase()}
+Durasi      : ${order.days} Hari (${ipParam} IP)
+Dibuat Pada : ${formatWIB(order.createdAt)}
+Diterima    : ${formatWIB(order.paidAt)}
+Status      : Aktif di Server VPS Dinns
 ━━━━━━━━━━━━━━━━━━━`;
       await sendTelegramNotification(notifSuccess);
 
@@ -164,9 +173,9 @@ Status     : Sukses dieksekusi di Server Dinns
   return res.status(200).json({
     status: order.status,
     credentials: order.credentials,
-    debug: {
-      trxId: currentTrxId,
-      gatewayResponse: dinnPayRaw
-    }
+    createdAt: formatWIB(order.createdAt),
+    paidAt: formatWIB(order.paidAt || Date.now()),
+    rate_limited: isRateLimited,
+    retry_after: retryAfterSeconds
   });
 };
