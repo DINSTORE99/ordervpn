@@ -166,7 +166,12 @@
         </button>
       </div>
 
+      <!-- RINCIAN HARGA, FEE, DAN WAKTU TAGIHAN -->
       <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 text-left space-y-2.5">
+        <div class="flex justify-between text-xs text-slate-400">
+          <span>Waktu Dibuat:</span>
+          <span id="summaryCreatedAt" class="font-semibold text-slate-300">-</span>
+        </div>
         <div class="flex justify-between text-xs text-slate-400">
           <span>Paket (<span id="summaryDays">30 Hari</span> • <span id="summaryIp">1 IP</span>):</span>
           <span id="summaryBasePrice" class="font-semibold text-slate-200">Rp 0</span>
@@ -196,11 +201,8 @@
       </p>
 
       <div class="space-y-2 pt-1">
-        <button id="btnCheckPay" onclick="checkPaymentStatus(currentOrderId, true, false)" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-600/20">
+        <button id="btnCheckPay" onclick="checkPaymentStatus(true, false)" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-lg shadow-emerald-600/20">
           🔄 Sudah Bayar? Cek Status Sekarang
-        </button>
-        <button onclick="checkPaymentStatus(currentOrderId, false, true)" class="w-full text-slate-500 hover:text-slate-400 py-1 rounded-lg text-[11px]">
-          🧪 Simulasi Bayar (Mode Testing)
         </button>
       </div>
     </div>
@@ -211,8 +213,8 @@
       </div>
 
       <div>
-        <label class="block text-xs font-semibold mb-1.5 text-slate-400">Detail Konfigurasi Akun:</label>
-        <textarea id="outputResult" readonly rows="12" class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
+        <label class="block text-xs font-semibold mb-1.5 text-slate-400">Detail Konfigurasi Akun & Bukti Pembayaran:</label>
+        <textarea id="outputResult" readonly rows="13" class="w-full bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 font-mono text-xs text-emerald-400 focus:outline-none"></textarea>
       </div>
 
       <div id="sshQuickCopy" class="hidden grid grid-cols-2 gap-2 text-xs">
@@ -260,9 +262,21 @@
     let timerInterval = null;
     let activeAccountData = null;
     let activeProtocol = 'ssh';
-    let currentOrderId = null;
     let currentQrImage = '';
     let currentRawTotal = 0;
+    let lastCheckTime = 0;
+
+    let currentOrderInfo = {
+      orderId: null,
+      trxId: null,
+      username: '',
+      password: '',
+      protocol: 'ssh',
+      days: 30,
+      iplimit: 1,
+      actionType: 'buy',
+      createdAtFormatted: ''
+    };
 
     function switchMode(mode) {
       currentMode = mode;
@@ -354,7 +368,7 @@
       if (!currentQrImage) return alert('Gambar QRIS belum tersedia');
       const link = document.createElement('a');
       link.href = currentQrImage;
-      link.download = `QRIS-${currentOrderId || 'VPN'}.png`;
+      link.download = `QRIS-${currentOrderInfo.orderId || 'VPN'}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -393,7 +407,7 @@
       }, 1000);
     }
 
-    function formatVpnOutput(res, protocol) {
+    function formatVpnOutput(res, protocol, createdAtStr = '-', paidAtStr = '-') {
       const item = (res && res.data) ? res.data : res;
       activeAccountData = item;
       activeProtocol = protocol;
@@ -405,15 +419,17 @@
         document.getElementById('xrayQuickCopy').classList.add('hidden');
 
         return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     STATUS PERPANJANGAN AKUN
+     BUKTI STATUS PERPANJANGAN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Status          : Berhasil Diperpanjang ✅
+Tagihan Dibuat  : ${createdAtStr}
+Dana Diterima   : ${paidAtStr}
 Username        : ${item.username || '-'}
 Layanan         : ${protocol.toUpperCase()}
 Masa Aktif Lama : ${item.previous_expiry || '-'}
 Tambahan Durasi : +${item.days_added || '0'} Hari
 Masa Aktif Baru : ${item.expired || '-'}
-Limit IP        : ${selectedIpLimit} Device
+Limit IP        : ${currentOrderInfo.iplimit || selectedIpLimit} Device
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Catatan: Akun VPN Anda langsung aktif kembali dengan konfigurasi akun sebelumnya.`;
       }
@@ -429,15 +445,16 @@ Catatan: Akun VPN Anda langsung aktif kembali dengan konfigurasi akun sebelumnya
         return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
        DETAIL AKUN SSH / OVPN
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Status        : Aktif
-Username      : ${item.username || '-'}
-Password      : ${item.password || '-'}
-Limit IP      : ${selectedIpLimit} Device
-Host / Domain : ${item.host || '-'}
-IP Server     : ${item.ip || '-'}
-Lokasi / ISP  : ${item.city || '-'} (${item.isp || '-'})
-Dibuat        : ${item.created || '-'}
-Masa Aktif    : ${item.expired || '-'}
+Status          : Aktif ✅
+Tagihan Dibuat  : ${createdAtStr}
+Dana Diterima   : ${paidAtStr}
+Username        : ${item.username || '-'}
+Password        : ${item.password || '-'}
+Limit IP        : ${currentOrderInfo.iplimit || selectedIpLimit} Device
+Host / Domain   : ${item.host || '-'}
+IP Server       : ${item.ip || '-'}
+Lokasi / ISP    : ${item.city || '-'} (${item.isp || '-'})
+Masa Aktif      : ${item.expired || '-'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PORT DETAIL:
 • OpenSSH     : ${p.openSSH || '-'}
@@ -482,12 +499,14 @@ LINK PENTING:
       return `━━━━━━━━━━━━━━━━━━━━━━━━━━━
      DETAIL AKUN ${protocol.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Status        : Aktif
-Username      : ${user}
-Domain        : ${domain}
-UUID          : ${uuid}
-Limit IP      : ${selectedIpLimit} Device
-Masa Aktif    : ${exp}
+Status          : Aktif ✅
+Tagihan Dibuat  : ${createdAtStr}
+Dana Diterima   : ${paidAtStr}
+Username        : ${user}
+Domain          : ${domain}
+UUID            : ${uuid}
+Limit IP        : ${currentOrderInfo.iplimit || selectedIpLimit} Device
+Masa Aktif      : ${exp}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LINK WS TLS (Port 443):
 ${wsTls}
@@ -540,7 +559,7 @@ LINK PENTING:
 
           const userLabel = resultData.data?.user || resultData.data?.username || protocol.toUpperCase();
           document.getElementById('resultBanner').innerText = `⚡ Trial 60 Menit Aktif! (${userLabel})`;
-          document.getElementById('outputResult').value = formatVpnOutput(resultData, protocol);
+          document.getElementById('outputResult').value = formatVpnOutput(resultData, protocol, 'Instan', 'Instan');
         } else {
           alert('Gagal membuat trial: ' + (lastErr?.message || 'Server VPS offline'));
           btn.disabled = false;
@@ -620,7 +639,24 @@ LINK PENTING:
         const data = await res.json();
 
         if (res.ok && data.success) {
-          currentOrderId = data.orderId;
+          const nowStr = new Date().toLocaleString('id-ID', {
+            timeZone: 'Asia/Jakarta',
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+          }) + ' WIB';
+
+          currentOrderInfo = {
+            orderId: data.orderId,
+            trxId: data.transactionId || data.trx_id || data.orderId,
+            username: username,
+            password: password || 'renew_pass',
+            protocol: protocol,
+            days: selectedDays,
+            iplimit: selectedIpLimit,
+            actionType: currentMode,
+            createdAtFormatted: nowStr
+          };
+
           currentQrImage = data.qrImage;
           currentRawTotal = Number(data.totalAmount || data.amount);
 
@@ -628,6 +664,7 @@ LINK PENTING:
           document.getElementById('stepQris').classList.remove('hidden');
 
           document.getElementById('qrisImg').src = data.qrImage;
+          document.getElementById('summaryCreatedAt').innerText = nowStr;
           document.getElementById('summaryDays').innerText = `${data.days} Hari`;
           document.getElementById('summaryIp').innerText = `${data.iplimit} IP`;
           
@@ -645,7 +682,7 @@ LINK PENTING:
           document.getElementById('btnCheckPay').classList.remove('opacity-50', 'cursor-not-allowed');
 
           startCountdown(300);
-          startPolling(data.orderId, protocol);
+          startPolling();
         } else {
           alert(data.error || 'Akun tidak terdaftar di server Dinns!');
           btn.disabled = false;
@@ -658,18 +695,42 @@ LINK PENTING:
       }
     }
 
-    async function checkPaymentStatus(orderId, isManualClick = false, isSimulation = false) {
-      if (!orderId) return;
+    async function checkPaymentStatus(isManualClick = false, isSimulation = false) {
+      if (!currentOrderInfo.orderId && !currentOrderInfo.trxId) return;
 
+      const now = Date.now();
       const btnCheck = document.getElementById('btnCheckPay');
 
       if (isManualClick && !isSimulation) {
-        btnCheck.innerText = '⏳ Sedang memeriksa...';
+        const timeDiff = Math.floor((now - lastCheckTime) / 1000);
+        if (timeDiff < 20) {
+          const waitTime = 20 - timeDiff;
+          alert(`Mohon tunggu ${waitTime} detik lagi sebelum memeriksa status kembali (ketentuan limit provider QRIS).`);
+          return;
+        }
+      }
+
+      lastCheckTime = now;
+
+      if (isManualClick && !isSimulation) {
+        btnCheck.innerText = '⏳ Sedang memeriksa ke DinnPay...';
         btnCheck.disabled = true;
       }
 
       try {
-        const url = `/api/check?orderId=${orderId}${isSimulation ? '&simulate_pay=true' : ''}`;
+        const queryParams = new URLSearchParams({
+          orderId: currentOrderInfo.orderId || '',
+          trx_id: currentOrderInfo.trxId || '',
+          username: currentOrderInfo.username,
+          password: currentOrderInfo.password,
+          protocol: currentOrderInfo.protocol,
+          days: currentOrderInfo.days,
+          iplimit: currentOrderInfo.iplimit,
+          actionType: currentOrderInfo.actionType,
+          simulate_pay: isSimulation ? 'true' : 'false'
+        });
+
+        const url = `/api/check?${queryParams.toString()}`;
         const res = await fetch(url);
         const data = await res.json();
 
@@ -680,12 +741,19 @@ LINK PENTING:
           document.getElementById('stepQris').classList.add('hidden');
           document.getElementById('stepResult').classList.remove('hidden');
 
-          const userLabel = data.credentials?.data?.username || data.credentials?.data?.user || 'User';
+          const userLabel = data.credentials?.data?.username || data.credentials?.data?.user || currentOrderInfo.username;
           document.getElementById('resultBanner').innerText = `🎉 Berhasil Diproses! Akun ${userLabel} Aktif`;
-          document.getElementById('outputResult').value = formatVpnOutput(data.credentials, document.getElementById('protocol').value);
+          
+          const createdLabel = data.createdAt || currentOrderInfo.createdAtFormatted || '-';
+          const paidLabel = data.paidAt || 'Lunas';
+          document.getElementById('outputResult').value = formatVpnOutput(data.credentials, currentOrderInfo.protocol, createdLabel, paidLabel);
         } else {
           if (isManualClick && !isSimulation) {
-            alert('Pembayaran belum terdeteksi. Silakan selesaikan scan QRIS terlebih dahulu.');
+            if (data.rate_limited) {
+              alert(`Terlalu sering memeriksa status. Silakan tunggu ${data.retry_after || 15} detik.`);
+            } else {
+              alert('Pembayaran belum terdeteksi di DinnPay. Pastikan transfer sudah berhasil dilakukan.');
+            }
           }
         }
       } catch (e) {
@@ -698,11 +766,11 @@ LINK PENTING:
       }
     }
 
-    function startPolling(orderId, protocol) {
+    function startPolling() {
       if (pollInterval) clearInterval(pollInterval);
       pollInterval = setInterval(() => {
-        checkPaymentStatus(orderId, false, false);
-      }, 3500);
+        checkPaymentStatus(false, false);
+      }, 21000);
     }
 
     function copyAccount() {
